@@ -20,6 +20,18 @@ interface VideoPlayerProps {
 }
 
 const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 2.5, 3];
+const VOLUME_STORAGE_KEY = 'aura-study-volume';
+
+function getStoredVolume(): number {
+  try {
+    const stored = localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (stored) {
+      const parsed = parseFloat(stored);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 1) return parsed;
+    }
+  } catch {}
+  return 1;
+}
 
 export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -27,7 +39,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(getStoredVolume);
   const [muted, setMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showControls, setShowControls] = useState(true);
@@ -88,21 +100,24 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     setCurrentTime(value[0]);
   };
 
-  const handleVolumeChange = (value: number[]) => {
+  const handleVolumeChange = useCallback((value: number[]) => {
     const video = videoRef.current;
     if (!video) return;
     const vol = value[0];
     video.volume = vol;
     setVolume(vol);
     setMuted(vol === 0);
-  };
+    try {
+      localStorage.setItem(VOLUME_STORAGE_KEY, vol.toString());
+    } catch {}
+  }, []);
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
     video.muted = !muted;
     setMuted(!muted);
-  };
+  }, [muted]);
 
   const changePlaybackRate = (rate: number) => {
     const video = videoRef.current;
@@ -111,20 +126,20 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     setPlaybackRate(rate);
   };
 
-  const skip = (seconds: number) => {
+  const skip = useCallback((seconds: number) => {
     const video = videoRef.current;
     if (!video) return;
-    video.currentTime = Math.max(0, Math.min(video.currentTime + seconds, duration));
-  };
+    video.currentTime = Math.max(0, Math.min(video.currentTime + seconds, video.duration || duration));
+  }, [duration]);
 
-  const toggleFullscreen = () => {
+  const toggleFullscreen = useCallback(() => {
     if (!containerRef.current) return;
     if (document.fullscreenElement) {
       document.exitFullscreen();
     } else {
       containerRef.current.requestFullscreen();
     }
-  };
+  }, []);
 
   const handleMouseMove = () => {
     setShowControls(true);
@@ -145,6 +160,12 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if video container is focused or no input is focused
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+
       switch (e.key) {
         case ' ':
         case 'k':
@@ -152,15 +173,27 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
           togglePlay();
           break;
         case 'ArrowLeft':
+          e.preventDefault();
           skip(-10);
           break;
         case 'ArrowRight':
+          e.preventDefault();
           skip(10);
           break;
+        case 'ArrowUp':
+          e.preventDefault();
+          handleVolumeChange([Math.min(1, volume + 0.1)]);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          handleVolumeChange([Math.max(0, volume - 0.1)]);
+          break;
         case 'f':
+          e.preventDefault();
           toggleFullscreen();
           break;
         case 'm':
+          e.preventDefault();
           toggleMute();
           break;
       }
@@ -168,7 +201,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlay]);
+  }, [togglePlay, skip, toggleFullscreen, toggleMute, handleVolumeChange, volume]);
 
   // Content protection
   useEffect(() => {
