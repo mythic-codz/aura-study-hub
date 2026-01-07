@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Play, FileText, Clock } from 'lucide-react';
 import type { Batch } from '@/hooks/useBatches';
+import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
 
 interface BatchCardProps {
   batch: Batch;
@@ -22,17 +23,11 @@ export function BatchCard({ batch, index }: BatchCardProps) {
         className="glass-card-hover overflow-hidden group cursor-pointer"
       >
         <div className="relative aspect-video overflow-hidden">
-          {batch.thumbnail ? (
-            <img
-              src={batch.thumbnail}
-              alt={batch.name || 'Batch thumbnail'}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
-              <Play className="w-12 h-12 text-primary/50" />
-            </div>
-          )}
+          <img
+            src={batch.thumbnail || defaultThumbnail}
+            alt={batch.name || 'Batch thumbnail'}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
           
           {/* Play overlay */}
