@@ -44,6 +44,86 @@ export type Database = {
         }
         Relationships: []
       }
+      progress: {
+        Row: {
+          batch_id: string
+          completed: boolean
+          content_index: number
+          content_type: string
+          created_at: string
+          id: string
+          last_position: number | null
+          progress_percent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          completed?: boolean
+          content_index: number
+          content_type: string
+          created_at?: string
+          id?: string
+          last_position?: number | null
+          progress_percent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          completed?: boolean
+          content_index?: number
+          content_type?: string
+          created_at?: string
+          id?: string
+          last_position?: number | null
+          progress_percent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          device_id: string
+          id: string
+          ip_address: string | null
+          name: string
+          updated_at: string
+          xp: number
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+          ip_address?: string | null
+          name: string
+          updated_at?: string
+          xp?: number
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          ip_address?: string | null
+          name?: string
+          updated_at?: string
+          xp?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
