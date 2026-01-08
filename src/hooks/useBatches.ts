@@ -18,11 +18,27 @@ export interface PdfItem {
   thumbnail?: string;
 }
 
+export interface Topic {
+  name: string;
+  videos: VideoItem[];
+  pdfs: PdfItem[];
+}
+
+export interface Subject {
+  name: string;
+  topics: Topic[];
+}
+
+export interface StructuredData {
+  subjects: Subject[];
+}
+
 export interface Batch {
   id: string;
   name: string | null;
   thumbnail: string | null;
   data: Json | null;
+  structured_data: StructuredData | null;
   videos: VideoItem[];
   pdfs: PdfItem[];
   updated_at: string | null;
@@ -48,6 +64,31 @@ function parsePdfs(pdfs: Json | null): PdfItem[] {
   }).filter((p): p is PdfItem => p !== null);
 }
 
+function parseStructuredData(data: Json | null): StructuredData | null {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const obj = data as Record<string, Json>;
+  if (!obj.subjects || !Array.isArray(obj.subjects)) return null;
+  
+  return {
+    subjects: (obj.subjects as Json[]).map((subject) => {
+      const s = subject as Record<string, Json>;
+      return {
+        name: String(s.name || 'Untitled Subject'),
+        topics: Array.isArray(s.topics) 
+          ? (s.topics as Json[]).map((topic) => {
+              const t = topic as Record<string, Json>;
+              return {
+                name: String(t.name || 'Untitled Topic'),
+                videos: parseVideos(t.videos as Json),
+                pdfs: parsePdfs(t.pdfs as Json),
+              };
+            })
+          : [],
+      };
+    }),
+  };
+}
+
 export function useBatches() {
   return useQuery({
     queryKey: ['batches'],
@@ -63,6 +104,7 @@ export function useBatches() {
         ...batch,
         videos: parseVideos(batch.videos),
         pdfs: parsePdfs(batch.pdfs),
+        structured_data: parseStructuredData(batch.structured_data),
       })) as Batch[];
     },
   });
@@ -85,6 +127,7 @@ export function useBatch(batchId: string) {
         ...data,
         videos: parseVideos(data.videos),
         pdfs: parsePdfs(data.pdfs),
+        structured_data: parseStructuredData(data.structured_data),
       } as Batch;
     },
     enabled: !!batchId,

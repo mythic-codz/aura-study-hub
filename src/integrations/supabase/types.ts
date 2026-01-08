@@ -20,6 +20,7 @@ export type Database = {
           id: string
           name: string | null
           pdfs: Json | null
+          structured_data: Json | null
           thumbnail: string | null
           updated_at: string | null
           videos: Json | null
@@ -29,6 +30,7 @@ export type Database = {
           id: string
           name?: string | null
           pdfs?: Json | null
+          structured_data?: Json | null
           thumbnail?: string | null
           updated_at?: string | null
           videos?: Json | null
@@ -38,6 +40,7 @@ export type Database = {
           id?: string
           name?: string | null
           pdfs?: Json | null
+          structured_data?: Json | null
           thumbnail?: string | null
           updated_at?: string | null
           videos?: Json | null
