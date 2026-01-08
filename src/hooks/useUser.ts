@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { getOrCreateDeviceId, storeDeviceId } from '@/lib/deviceId';
 
 export interface User {
   id: string;
@@ -42,8 +42,29 @@ export function useUser() {
   }, []);
 
   const createUser = useCallback(async (name: string) => {
+    const trimmedName = name.trim().toLowerCase();
     const deviceId = getOrCreateDeviceId();
     
+    // First, check if a user with this name already exists
+    const { data: existingUser, error: searchError } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('name', trimmedName)
+      .maybeSingle();
+
+    if (searchError && searchError.code !== 'PGRST116') {
+      console.error('Error searching for user:', searchError);
+    }
+
+    // If user with same name exists, link this device to that account
+    if (existingUser) {
+      // Update the device ID in localStorage to match the existing user's device
+      storeDeviceId(existingUser.device_id);
+      setUser(existingUser);
+      setNeedsOnboarding(false);
+      return existingUser;
+    }
+
     // Try to get IP address (will be null if fetch fails)
     let ipAddress = null;
     try {
@@ -59,7 +80,7 @@ export function useUser() {
       .insert({
         device_id: deviceId,
         ip_address: ipAddress,
-        name: name.trim(),
+        name: trimmedName,
       })
       .select()
       .single();
