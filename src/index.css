@@ -140,11 +140,49 @@
   }
 
   .animated-bg {
+    position: relative;
+    background: hsl(var(--background));
+    overflow: hidden;
+  }
+
+  .animated-bg::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
     background: 
-      radial-gradient(ellipse at 20% 20%, hsl(270 80% 30% / 0.3) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 80%, hsl(280 70% 25% / 0.3) 0%, transparent 50%),
-      radial-gradient(ellipse at 50% 50%, hsl(200 60% 20% / 0.2) 0%, transparent 60%),
-      hsl(var(--background));
+      radial-gradient(ellipse 80% 60% at 20% 10%, hsl(270 80% 50% / 0.25) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 80% at 85% 90%, hsl(200 90% 50% / 0.2) 0%, transparent 45%),
+      radial-gradient(ellipse 70% 50% at 50% 50%, hsl(280 70% 40% / 0.15) 0%, transparent 55%);
+    animation: aurora 15s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  .animated-bg > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  @keyframes aurora {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      opacity: 1;
+      transform: scale(1.1) rotate(1deg);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.05) rotate(-1deg);
+    }
+    75% {
+      opacity: 1;
+      transform: scale(1.15) rotate(0.5deg);
+    }
   }
 
   .content-protection {

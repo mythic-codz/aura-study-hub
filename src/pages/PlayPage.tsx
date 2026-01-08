@@ -4,14 +4,21 @@ import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { PDFViewer } from '@/components/PDFViewer';
 import { useBatch } from '@/hooks/useBatches';
-import { useUpdateProgress } from '@/hooks/useProgress';
+import { useProgress, useUpdateProgress } from '@/hooks/useProgress';
 
 export default function PlayPage() {
   const { batchId, type, index } = useParams<{ batchId: string; type: 'video' | 'pdf'; index: string }>();
   const { data: batch, isLoading } = useBatch(batchId || '');
+  const { data: progressData } = useProgress(batchId);
   const updateProgress = useUpdateProgress();
 
   const contentIndex = parseInt(index || '0', 10);
+
+  // Get initial position for resume playback
+  const existingProgress = progressData?.find(
+    p => p.content_type === type && p.content_index === contentIndex
+  );
+  const initialTime = existingProgress?.last_position || 0;
 
   if (isLoading) {
     return (
@@ -47,13 +54,18 @@ export default function PlayPage() {
   return (
     <div className="min-h-screen animated-bg">
       <Header />
-      <main className="container mx-auto px-4 pt-24 pb-12">
-        <Link to={`/batch/${batchId}`} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-6">
+      <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-12">
+        <Link to={`/batch/${batchId}`} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 sm:mb-6 text-sm sm:text-base">
           <ArrowLeft className="w-4 h-4" /> Back to {batch.name}
         </Link>
 
         {type === 'video' ? (
-          <VideoPlayer src={content.url} title={content.title} onProgress={handleProgress} />
+          <VideoPlayer 
+            src={content.url} 
+            title={content.title} 
+            onProgress={handleProgress} 
+            initialTime={initialTime}
+          />
         ) : (
           <PDFViewer src={content.url} title={content.title} onProgress={handleProgress} />
         )}
