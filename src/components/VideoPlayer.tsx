@@ -15,7 +15,7 @@ import {
 interface VideoPlayerProps {
   src: string;
   title: string;
-  onProgress?: (percent: number, currentTime: number) => void;
+  onProgress?: (percent: number, currentTime: number, duration: number) => void;
   initialTime?: number;
 }
 
@@ -62,7 +62,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         // Report progress every 5% to avoid too many updates
         if (Math.abs(percent - lastProgressReport.current) >= 5 || percent >= 95) {
           lastProgressReport.current = percent;
-          onProgress(percent, video.currentTime);
+          onProgress(percent, video.currentTime, video.duration);
         }
       }
     };
@@ -79,7 +79,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       setPlaying(false);
       // Report 100% completion when video ends
       if (onProgress) {
-        onProgress(100, video.duration);
+        onProgress(100, video.duration, video.duration);
       }
     };
 
