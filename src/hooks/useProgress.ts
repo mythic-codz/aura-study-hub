@@ -11,7 +11,16 @@ export interface Progress {
   progress_percent: number;
   completed: boolean;
   last_position: number;
+  xp_milestones_claimed?: string; // JSON array of claimed milestones: ["25", "50", "75", "complete"]
 }
+
+// XP milestones for video watching
+const VIDEO_XP_MILESTONES = {
+  25: 2,   // 25% watched = 2 XP
+  50: 3,   // 50% watched = 3 XP
+  75: 3,   // 75% watched = 3 XP
+  complete: 2, // completion = 2 XP (total 10 XP for full video)
+};
 
 export function useProgress(batchId?: string) {
   const { user } = useUser();
@@ -50,16 +59,27 @@ export function useUpdateProgress() {
       contentIndex,
       progressPercent,
       lastPosition,
+      videoDuration,
     }: {
       batchId: string;
       contentType: 'video' | 'pdf';
       contentIndex: number;
       progressPercent: number;
       lastPosition: number;
+      videoDuration?: number; // Duration in seconds for video completion check
     }) => {
       if (!user) throw new Error('No user');
 
-      const completed = progressPercent >= 95;
+      // For videos: complete 5 minutes before end OR at 95%
+      // For PDFs: complete at 95%
+      let completed = progressPercent >= 95;
+      if (contentType === 'video' && videoDuration && videoDuration > 300) {
+        // If more than 5 minutes of video, complete 5 min before end
+        const timeRemaining = videoDuration - lastPosition;
+        if (timeRemaining <= 300) {
+          completed = true;
+        }
+      }
       
       // Check if progress exists
       const { data: existing } = await supabase
@@ -72,6 +92,49 @@ export function useUpdateProgress() {
         .maybeSingle();
 
       const wasAlreadyCompleted = existing?.completed;
+      let claimedMilestones: string[] = [];
+      
+      try {
+        // Cast to any since the column may not be in types yet
+        const existingData = existing as Record<string, unknown> | null;
+        const storedMilestones = existingData?.xp_milestones_claimed;
+        claimedMilestones = storedMilestones 
+          ? JSON.parse(storedMilestones as string) 
+          : [];
+      } catch {
+        claimedMilestones = [];
+      }
+
+      // Calculate XP to award for video milestones
+      let xpToAward = 0;
+      const newMilestones: string[] = [...claimedMilestones];
+
+      if (contentType === 'video') {
+        // Check each milestone
+        if (progressPercent >= 25 && !claimedMilestones.includes('25')) {
+          xpToAward += VIDEO_XP_MILESTONES[25];
+          newMilestones.push('25');
+        }
+        if (progressPercent >= 50 && !claimedMilestones.includes('50')) {
+          xpToAward += VIDEO_XP_MILESTONES[50];
+          newMilestones.push('50');
+        }
+        if (progressPercent >= 75 && !claimedMilestones.includes('75')) {
+          xpToAward += VIDEO_XP_MILESTONES[75];
+          newMilestones.push('75');
+        }
+        if (completed && !claimedMilestones.includes('complete')) {
+          xpToAward += VIDEO_XP_MILESTONES.complete;
+          newMilestones.push('complete');
+        }
+      } else if (contentType === 'pdf') {
+        // PDF gets 5 XP on completion
+        if (completed && !wasAlreadyCompleted) {
+          xpToAward = 5;
+        }
+      }
+
+      const milestonesJson = JSON.stringify(newMilestones);
 
       if (existing) {
         const { data, error } = await supabase
@@ -80,6 +143,7 @@ export function useUpdateProgress() {
             progress_percent: progressPercent,
             last_position: lastPosition,
             completed,
+            xp_milestones_claimed: milestonesJson,
           })
           .eq('id', existing.id)
           .select()
@@ -87,9 +151,9 @@ export function useUpdateProgress() {
 
         if (error) throw error;
 
-        // Award XP on first completion
-        if (completed && !wasAlreadyCompleted) {
-          await addXP(contentType === 'video' ? 10 : 5);
+        // Award accumulated XP
+        if (xpToAward > 0) {
+          await addXP(xpToAward);
         }
 
         return data;
@@ -104,15 +168,16 @@ export function useUpdateProgress() {
             progress_percent: progressPercent,
             last_position: lastPosition,
             completed,
+            xp_milestones_claimed: milestonesJson,
           })
           .select()
           .single();
 
         if (error) throw error;
 
-        // Award XP on first completion
-        if (completed) {
-          await addXP(contentType === 'video' ? 10 : 5);
+        // Award XP
+        if (xpToAward > 0) {
+          await addXP(xpToAward);
         }
 
         return data;

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
@@ -11,6 +12,7 @@ export default function PlayPage() {
   const { data: batch, isLoading } = useBatch(batchId || '');
   const { data: progressData } = useProgress(batchId);
   const updateProgress = useUpdateProgress();
+  const [videoDuration, setVideoDuration] = useState<number>(0);
 
   const contentIndex = parseInt(index || '0', 10);
 
@@ -41,13 +43,19 @@ export default function PlayPage() {
     );
   }
 
-  const handleProgress = (percent: number, currentTime?: number) => {
+  const handleProgress = (percent: number, currentTime?: number, duration?: number) => {
+    // Store duration for completion check
+    if (duration && duration > 0) {
+      setVideoDuration(duration);
+    }
+    
     updateProgress.mutate({
       batchId: batchId!,
       contentType: type!,
       contentIndex,
       progressPercent: percent,
       lastPosition: currentTime || 0,
+      videoDuration: duration || videoDuration,
     });
   };
 

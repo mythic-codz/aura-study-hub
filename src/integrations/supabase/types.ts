@@ -59,6 +59,7 @@ export type Database = {
           progress_percent: number
           updated_at: string
           user_id: string
+          xp_milestones_claimed: string | null
         }
         Insert: {
           batch_id: string
@@ -71,6 +72,7 @@ export type Database = {
           progress_percent?: number
           updated_at?: string
           user_id: string
+          xp_milestones_claimed?: string | null
         }
         Update: {
           batch_id?: string
@@ -83,6 +85,7 @@ export type Database = {
           progress_percent?: number
           updated_at?: string
           user_id?: string
+          xp_milestones_claimed?: string | null
         }
         Relationships: [
           {

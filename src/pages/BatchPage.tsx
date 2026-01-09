@@ -119,6 +119,40 @@ export default function BatchPage() {
     return { completed, total, percent: total > 0 ? (completed / total) * 100 : 0 };
   };
 
+  // Get topic progress
+  const getTopicProgress = (subject: Subject, topic: Topic) => {
+    let total = 0;
+    let completed = 0;
+    let videoIndex = 0;
+    let pdfIndex = 0;
+
+    // Navigate to the topic and calculate indices
+    batch?.structured_data?.subjects.forEach((s) => {
+      s.topics.forEach((t) => {
+        if (s.name === subject.name && t.name === topic.name) {
+          // This is the target topic
+          t.videos.forEach(() => {
+            total++;
+            const progress = getContentProgress('video', videoIndex);
+            if (progress.completed) completed++;
+            videoIndex++;
+          });
+          t.pdfs.forEach(() => {
+            total++;
+            const progress = getContentProgress('pdf', pdfIndex);
+            if (progress.completed) completed++;
+            pdfIndex++;
+          });
+        } else {
+          videoIndex += t.videos.length;
+          pdfIndex += t.pdfs.length;
+        }
+      });
+    });
+
+    return { completed, total, percent: total > 0 ? (completed / total) * 100 : 0 };
+  };
+
   // Get topic content with global indices
   const getTopicContent = (subject: Subject, topic: Topic) => {
     let videoStartIndex = 0;
@@ -342,6 +376,8 @@ export default function BatchPage() {
                 {selectedSubject.topics.map((topic, i) => {
                   const videoCount = topic.videos.length;
                   const pdfCount = topic.pdfs.length;
+                  const topicProgress = getTopicProgress(selectedSubject, topic);
+                  const isComplete = topicProgress.percent === 100;
                   return (
                     <motion.button
                       key={topic.name}
@@ -351,10 +387,18 @@ export default function BatchPage() {
                       onClick={() => handleTopicClick(topic)}
                       className="glass-card-hover p-4 text-left w-full group"
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-primary-foreground" />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            isComplete 
+                              ? 'bg-green-500/20' 
+                              : 'bg-gradient-to-br from-accent to-primary'
+                          }`}>
+                            {isComplete ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : (
+                              <BookOpen className="w-5 h-5 text-primary-foreground" />
+                            )}
                           </div>
                           <div>
                             <h3 className="font-semibold line-clamp-1">{topic.name}</h3>
@@ -365,8 +409,14 @@ export default function BatchPage() {
                             </p>
                           </div>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            {topicProgress.completed}/{topicProgress.total}
+                          </span>
+                          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
                       </div>
+                      <Progress value={topicProgress.percent} className="h-1" />
                     </motion.button>
                   );
                 })}
