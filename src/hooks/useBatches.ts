@@ -18,8 +18,22 @@ export interface PdfItem {
   thumbnail?: string;
 }
 
+// New format: Content item with type
+export interface ContentItem {
+  title: string;
+  type: 'video' | 'pdf' | 'test';
+  url: string;
+  content_index?: number;
+  duration?: number;
+  pages?: number;
+  thumbnail?: string;
+}
+
+// New format: Topic is just a map of content items
 export interface Topic {
   name: string;
+  items: ContentItem[];
+  // Legacy support
   videos: VideoItem[];
   pdfs: PdfItem[];
 }
@@ -64,9 +78,74 @@ function parsePdfs(pdfs: Json | null): PdfItem[] {
   }).filter((p): p is PdfItem => p !== null);
 }
 
+function parseContentItems(items: Json | null): ContentItem[] {
+  if (!items || !Array.isArray(items)) return [];
+  const result: ContentItem[] = [];
+  for (const item of items) {
+    if (typeof item === 'object' && item !== null && 'title' in item && 'url' in item) {
+      const i = item as Record<string, Json>;
+      result.push({
+        title: String(i.title || ''),
+        type: (i.type as 'video' | 'pdf' | 'test') || 'video',
+        url: String(i.url || ''),
+        content_index: typeof i.content_index === 'number' ? i.content_index : undefined,
+        duration: typeof i.duration === 'number' ? i.duration : undefined,
+        pages: typeof i.pages === 'number' ? i.pages : undefined,
+        thumbnail: typeof i.thumbnail === 'string' ? i.thumbnail : undefined,
+      });
+    }
+  }
+  return result;
+}
+
 function parseStructuredData(data: Json | null): StructuredData | null {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
   const obj = data as Record<string, Json>;
+  
+  // NEW FORMAT: { "Subject Name": { "Topic Name": [ { title, type, url } ] } }
+  // Check if it's the new format (keys are subject names, not 'subjects' array)
+  const keys = Object.keys(obj);
+  const isNewFormat = keys.length > 0 && !obj.subjects;
+  
+  if (isNewFormat) {
+    const subjects: Subject[] = keys.map((subjectName, subjectIndex) => {
+      const subjectData = obj[subjectName];
+      if (typeof subjectData !== 'object' || subjectData === null || Array.isArray(subjectData)) {
+        return { name: subjectName, topics: [] };
+      }
+      
+      const topicKeys = Object.keys(subjectData as Record<string, Json>);
+      let contentIndex = 0;
+      
+      const topics: Topic[] = topicKeys.map((topicName) => {
+        const topicData = (subjectData as Record<string, Json>)[topicName];
+        const items = parseContentItems(topicData as Json);
+        
+        // Assign content_index if not provided
+        items.forEach((item) => {
+          if (item.content_index === undefined) {
+            item.content_index = contentIndex++;
+          }
+        });
+        
+        // Legacy support: split items into videos and pdfs
+        const videos: VideoItem[] = items
+          .filter(i => i.type === 'video')
+          .map(i => ({ id: String(i.content_index), title: i.title, url: i.url, duration: i.duration, thumbnail: i.thumbnail }));
+        const pdfs: PdfItem[] = items
+          .filter(i => i.type === 'pdf')
+          .map(i => ({ id: String(i.content_index), title: i.title, url: i.url, pages: i.pages, thumbnail: i.thumbnail }));
+        
+        return { name: topicName, items, videos, pdfs };
+      });
+      
+      return { name: subjectName, topics };
+    });
+    
+    return { subjects };
+  }
+  
+  // OLD FORMAT: { subjects: [{ name, topics: [{ name, videos, pdfs }] }] }
   if (!obj.subjects || !Array.isArray(obj.subjects)) return null;
   
   return {
@@ -77,10 +156,32 @@ function parseStructuredData(data: Json | null): StructuredData | null {
         topics: Array.isArray(s.topics) 
           ? (s.topics as Json[]).map((topic) => {
               const t = topic as Record<string, Json>;
+              const videos = parseVideos(t.videos as Json);
+              const pdfs = parsePdfs(t.pdfs as Json);
+              // Create items array from videos and pdfs for unified access
+              const items: ContentItem[] = [
+                ...videos.map((v, i) => ({ 
+                  title: v.title, 
+                  type: 'video' as const, 
+                  url: v.url, 
+                  content_index: i,
+                  duration: v.duration,
+                  thumbnail: v.thumbnail
+                })),
+                ...pdfs.map((p, i) => ({ 
+                  title: p.title, 
+                  type: 'pdf' as const, 
+                  url: p.url, 
+                  content_index: videos.length + i,
+                  pages: p.pages,
+                  thumbnail: p.thumbnail
+                })),
+              ];
               return {
                 name: String(t.name || 'Untitled Topic'),
-                videos: parseVideos(t.videos as Json),
-                pdfs: parsePdfs(t.pdfs as Json),
+                items,
+                videos,
+                pdfs,
               };
             })
           : [],
