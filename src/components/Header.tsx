@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Home, Trophy, User, Sparkles } from 'lucide-react';
+import { Home, Trophy, User, Sparkles, Award } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
@@ -10,6 +10,7 @@ export function Header() {
 
   const navItems = [
     { path: '/', icon: Home, label: 'Home' },
+    { path: '/achievements', icon: Award, label: 'Badges' },
     { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
