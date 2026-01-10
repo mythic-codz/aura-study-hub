@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          badge_color: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+          requirement: number
+          type: Database["public"]["Enums"]["achievement_type"]
+          xp_reward: number
+        }
+        Insert: {
+          badge_color?: string
+          created_at?: string
+          description: string
+          icon?: string
+          id?: string
+          name: string
+          requirement?: number
+          type: Database["public"]["Enums"]["achievement_type"]
+          xp_reward?: number
+        }
+        Update: {
+          badge_color?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          requirement?: number
+          type?: Database["public"]["Enums"]["achievement_type"]
+          xp_reward?: number
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           data: Json | null
@@ -50,6 +86,7 @@ export type Database = {
       progress: {
         Row: {
           batch_id: string
+          batch_name: string | null
           completed: boolean
           content_index: number
           content_type: string
@@ -63,6 +100,7 @@ export type Database = {
         }
         Insert: {
           batch_id: string
+          batch_name?: string | null
           completed?: boolean
           content_index: number
           content_type: string
@@ -76,6 +114,7 @@ export type Database = {
         }
         Update: {
           batch_id?: string
+          batch_name?: string | null
           completed?: boolean
           content_index?: number
           content_type?: string
@@ -90,6 +129,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          id: string
+          unlocked_at: string
+          user_id: string
+        }
+        Insert: {
+          achievement_id: string
+          id?: string
+          unlocked_at?: string
+          user_id: string
+        }
+        Update: {
+          achievement_id?: string
+          id?: string
+          unlocked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -138,7 +213,12 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      achievement_type:
+        | "batch_complete"
+        | "videos_watched"
+        | "xp_milestone"
+        | "streak"
+        | "first_steps"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -265,6 +345,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      achievement_type: [
+        "batch_complete",
+        "videos_watched",
+        "xp_milestone",
+        "streak",
+        "first_steps",
+      ],
+    },
   },
 } as const
