@@ -2,60 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    --background: 250 30% 8%;
+    --background: 220 45% 6%;
     --foreground: 210 40% 98%;
 
-    --card: 250 25% 12%;
+    --card: 220 40% 10%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 250 25% 10%;
+    --popover: 220 40% 8%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 270 80% 60%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 200 100% 50%;
+    --primary-foreground: 220 45% 6%;
 
-    --secondary: 250 30% 18%;
+    --secondary: 220 35% 15%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 250 20% 20%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 220 25% 18%;
+    --muted-foreground: 215 20% 60%;
 
-    --accent: 280 70% 55%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 175 80% 45%;
+    --accent-foreground: 220 45% 6%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 250 20% 25%;
-    --input: 250 20% 20%;
-    --ring: 270 80% 60%;
+    --border: 220 25% 20%;
+    --input: 220 25% 15%;
+    --ring: 200 100% 50%;
 
     --radius: 1rem;
 
-    /* Glassmorphism tokens */
-    --glass-bg: 250 25% 15%;
-    --glass-border: 250 30% 30%;
-    --glass-glow: 270 80% 60%;
-    --gradient-start: 270 80% 55%;
-    --gradient-end: 280 70% 45%;
-    --gradient-accent: 200 90% 50%;
+    /* Ocean Glassmorphism tokens */
+    --glass-bg: 220 40% 12%;
+    --glass-border: 200 50% 30%;
+    --glass-glow: 200 100% 50%;
+    --gradient-start: 200 100% 50%;
+    --gradient-mid: 175 80% 45%;
+    --gradient-end: 190 90% 40%;
+    --gradient-accent: 165 80% 50%;
 
-    /* XP colors */
-    --xp-gold: 45 100% 50%;
-    --xp-glow: 45 100% 60%;
+    /* XP colors - Gold/Amber */
+    --xp-gold: 45 100% 55%;
+    --xp-glow: 45 100% 65%;
 
-    --sidebar-background: 250 30% 10%;
+    /* Ocean specific */
+    --ocean-deep: 220 50% 8%;
+    --ocean-surface: 200 60% 25%;
+    --ocean-light: 195 80% 65%;
+    --ocean-foam: 180 50% 85%;
+    --wave-glow: 195 100% 60%;
+
+    --sidebar-background: 220 45% 8%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 270 80% 60%;
-    --sidebar-primary-foreground: 210 40% 98%;
-    --sidebar-accent: 250 25% 18%;
+    --sidebar-primary: 200 100% 50%;
+    --sidebar-primary-foreground: 220 45% 6%;
+    --sidebar-accent: 220 35% 15%;
     --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 250 20% 25%;
-    --sidebar-ring: 270 80% 60%;
+    --sidebar-border: 220 25% 20%;
+    --sidebar-ring: 200 100% 50%;
   }
 }
 
@@ -66,22 +74,25 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
 }
 
 @layer components {
   .glass-card {
-    @apply bg-card/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+    @apply bg-card/50 backdrop-blur-xl border border-white/5 rounded-2xl;
     background: linear-gradient(
-      135deg,
-      hsl(var(--glass-bg) / 0.6) 0%,
-      hsl(var(--glass-bg) / 0.3) 100%
+      145deg,
+      hsl(var(--glass-bg) / 0.7) 0%,
+      hsl(var(--glass-bg) / 0.4) 100%
     );
+    box-shadow: 
+      0 8px 32px -8px hsl(var(--glass-glow) / 0.15),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.05);
   }
 
   .glass-card-hover {
@@ -89,10 +100,12 @@
   }
 
   .glass-card-hover:hover {
-    @apply border-white/20 scale-[1.02];
+    @apply border-white/15;
+    transform: translateY(-4px);
     box-shadow: 
-      0 25px 50px -12px hsl(var(--glass-glow) / 0.25),
-      0 0 40px -10px hsl(var(--glass-glow) / 0.15);
+      0 20px 40px -15px hsl(var(--glass-glow) / 0.25),
+      0 0 60px -20px hsl(var(--glass-glow) / 0.2),
+      inset 0 1px 0 0 hsl(0 0% 100% / 0.1);
   }
 
   .gradient-text {
@@ -100,8 +113,18 @@
     background-image: linear-gradient(
       135deg,
       hsl(var(--gradient-start)) 0%,
-      hsl(var(--gradient-end)) 50%,
+      hsl(var(--gradient-mid)) 50%,
       hsl(var(--gradient-accent)) 100%
+    );
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--ocean-light)) 0%,
+      hsl(var(--primary)) 50%,
+      hsl(var(--accent)) 100%
     );
   }
 
@@ -128,15 +151,18 @@
 
   .glow-effect {
     box-shadow: 
-      0 0 20px hsl(var(--glass-glow) / 0.3),
-      0 0 40px hsl(var(--glass-glow) / 0.1);
+      0 0 20px hsl(var(--glass-glow) / 0.4),
+      0 0 40px hsl(var(--glass-glow) / 0.2),
+      0 0 60px hsl(var(--glass-glow) / 0.1);
   }
 
   .xp-badge {
-    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold;
-    background: linear-gradient(135deg, hsl(var(--xp-gold)) 0%, hsl(45 80% 40%) 100%);
-    color: hsl(45 100% 10%);
-    box-shadow: 0 0 15px hsl(var(--xp-glow) / 0.5);
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-bold;
+    background: linear-gradient(135deg, hsl(var(--xp-gold)) 0%, hsl(40 90% 45%) 100%);
+    color: hsl(40 50% 10%);
+    box-shadow: 
+      0 0 20px hsl(var(--xp-glow) / 0.4),
+      inset 0 1px 0 0 hsl(45 100% 70% / 0.5);
   }
 
   .animated-bg {
@@ -154,10 +180,25 @@
     bottom: 0;
     pointer-events: none;
     background: 
-      radial-gradient(ellipse 80% 60% at 20% 10%, hsl(270 80% 50% / 0.25) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 80% at 85% 90%, hsl(200 90% 50% / 0.2) 0%, transparent 45%),
-      radial-gradient(ellipse 70% 50% at 50% 50%, hsl(280 70% 40% / 0.15) 0%, transparent 55%);
-    animation: aurora 15s ease-in-out infinite;
+      radial-gradient(ellipse 100% 80% at 10% 0%, hsl(200 100% 40% / 0.2) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 100% at 90% 100%, hsl(175 80% 35% / 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse 60% 60% at 50% 50%, hsl(195 80% 30% / 0.1) 0%, transparent 60%);
+    animation: oceanWave 20s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  .animated-bg::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    background: 
+      radial-gradient(circle at 20% 80%, hsl(200 100% 50% / 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 20%, hsl(175 80% 45% / 0.06) 0%, transparent 40%);
+    animation: oceanWave 15s ease-in-out infinite reverse;
     z-index: 0;
   }
 
@@ -166,22 +207,22 @@
     z-index: 1;
   }
 
-  @keyframes aurora {
+  @keyframes oceanWave {
     0%, 100% {
       opacity: 0.8;
-      transform: scale(1) rotate(0deg);
+      transform: scale(1) translateY(0);
     }
     25% {
       opacity: 1;
-      transform: scale(1.1) rotate(1deg);
+      transform: scale(1.05) translateY(-10px);
     }
     50% {
       opacity: 0.9;
-      transform: scale(1.05) rotate(-1deg);
+      transform: scale(1.02) translateY(5px);
     }
     75% {
       opacity: 1;
-      transform: scale(1.15) rotate(0.5deg);
+      transform: scale(1.08) translateY(-5px);
     }
   }
 
@@ -190,6 +231,92 @@
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+  }
+
+  /* Ocean wave decoration */
+  .ocean-waves {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 320'%3E%3Cpath fill='%230099ff' fill-opacity='0.1' d='M0,192L48,197.3C96,203,192,213,288,229.3C384,245,480,267,576,250.7C672,235,768,181,864,181.3C960,181,1056,235,1152,234.7C1248,235,1344,181,1392,154.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z'%3E%3C/path%3E%3C/svg%3E") repeat-x;
+    animation: wave 10s ease-in-out infinite;
+    opacity: 0.5;
+  }
+
+  @keyframes wave {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(-50px); }
+  }
+
+  /* Premium button style */
+  .btn-ocean {
+    @apply relative overflow-hidden px-6 py-3 rounded-xl font-semibold transition-all duration-300;
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .btn-ocean::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.2) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .btn-ocean:hover::before {
+    opacity: 1;
+  }
+
+  .btn-ocean:hover {
+    transform: translateY(-2px);
+    box-shadow: 
+      0 10px 30px -10px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
+  }
+
+  /* Shimmer effect */
+  .shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(0 0% 100% / 0.1) 50%,
+      transparent 100%
+    );
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+
+  /* Stat card specific */
+  .stat-card {
+    @apply glass-card px-5 py-4 rounded-2xl flex items-center gap-4 transition-all duration-300;
+  }
+
+  .stat-card:hover {
+    @apply border-white/10;
+    transform: translateY(-2px);
+    box-shadow: 0 15px 35px -10px hsl(var(--glass-glow) / 0.2);
+  }
+
+  .stat-icon {
+    @apply w-12 h-12 rounded-xl flex items-center justify-center;
   }
 }
 
@@ -206,14 +333,24 @@
     animation: slide-up 0.5s ease-out;
   }
 
+  .animate-wave {
+    animation: oceanWave 20s ease-in-out infinite;
+  }
+
   @keyframes float {
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(-10px); }
   }
 
   @keyframes pulse-glow {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
+    0%, 100% { 
+      opacity: 0.6; 
+      box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
+    }
+    50% { 
+      opacity: 1; 
+      box-shadow: 0 0 40px hsl(var(--primary) / 0.5);
+    }
   }
 
   @keyframes slide-up {
@@ -230,8 +367,8 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -239,12 +376,12 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted));
-  border-radius: 4px;
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.5) 0%, hsl(var(--accent) / 0.5) 100%);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--primary) / 0.7);
+  background: linear-gradient(180deg, hsl(var(--primary) / 0.7) 0%, hsl(var(--accent) / 0.7) 100%);
 }
 
 /* Video player custom styles */
@@ -254,4 +391,10 @@ video::-webkit-media-controls {
 
 video::-webkit-media-controls-enclosure {
   display: none !important;
+}
+
+/* Selection color */
+::selection {
+  background: hsl(var(--primary) / 0.3);
+  color: hsl(var(--foreground));
 }

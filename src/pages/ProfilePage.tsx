@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, Edit2, Check, X, Loader2, Camera, Trophy } from 'lucide-react';
+import { Sparkles, Edit2, Check, X, Loader2, Camera, Trophy, Zap, Calendar, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -11,6 +11,7 @@ import { useCheckAchievements, useUserAchievements } from '@/hooks/useAchievemen
 import { AchievementsGrid } from '@/components/AchievementsGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import logo from '@/assets/logo.png';
 
 export default function ProfilePage() {
   const { user, loading, updateUser } = useUser();
@@ -22,7 +23,6 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Check achievements on mount
   useEffect(() => {
     if (user) {
       checkAndUnlock();
@@ -83,7 +83,12 @@ export default function ProfilePage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen animated-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+        >
+          <img src={logo} alt="Loading" className="w-12 h-12 rounded-xl" />
+        </motion.div>
       </div>
     );
   }
@@ -94,92 +99,146 @@ export default function ProfilePage() {
       <main className="container mx-auto px-4 pt-24 pb-12 max-w-2xl">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
           {/* Profile Card */}
-          <div className="glass-card p-8 text-center">
-            <div className="relative inline-block mb-4">
-              <Avatar className="w-24 h-24 border-4 border-primary/30">
-                <AvatarImage src={user.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary/20 text-primary text-3xl font-bold">
-                  {user.name.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingAvatar}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-primary-foreground hover:bg-primary/80 transition-colors shadow-lg disabled:opacity-50"
-              >
-                {uploadingAvatar ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Camera className="w-4 h-4" />
-                )}
-              </button>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
+          <div className="glass-card p-8 text-center relative overflow-hidden">
+            {/* Decorative background */}
+            <div className="absolute inset-0 opacity-5">
+              <Waves className="w-full h-full" />
             </div>
-
-            <p className="text-xs text-muted-foreground mb-4">
-              Click camera icon to change photo
-            </p>
-
-            {editing ? (
-              <div className="flex items-center gap-2 justify-center mb-4">
-                <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="max-w-[200px]" placeholder="New name" />
-                <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving}><Check className="w-4 h-4" /></Button>
-                <Button size="icon" variant="ghost" onClick={() => setEditing(false)}><X className="w-4 h-4" /></Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 justify-center mb-4">
-                <h1 className="text-2xl font-display font-bold">{user.name}</h1>
-                <button onClick={() => { setNewName(user.name); setEditing(true); }} className="p-1 hover:bg-white/10 rounded">
-                  <Edit2 className="w-4 h-4 text-muted-foreground" />
+            
+            <div className="relative z-10">
+              {/* Avatar */}
+              <div className="relative inline-block mb-6">
+                <motion.div whileHover={{ scale: 1.05 }}>
+                  <Avatar className="w-28 h-28 ring-4 ring-primary/30 shadow-2xl">
+                    <AvatarImage src={user.avatar_url || undefined} />
+                    <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-primary text-4xl font-bold">
+                      {user.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </motion.div>
+                
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  className="absolute bottom-1 right-1 w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-primary-foreground hover:opacity-90 transition-all shadow-lg disabled:opacity-50"
+                >
+                  {uploadingAvatar ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
                 </button>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
               </div>
-            )}
 
-            <div className="xp-badge text-lg mb-4">
-              <Sparkles className="w-4 h-4" />
-              {user.xp} XP
-            </div>
+              {/* Name */}
+              {editing ? (
+                <div className="flex items-center gap-2 justify-center mb-6">
+                  <Input 
+                    value={newName} 
+                    onChange={(e) => setNewName(e.target.value)} 
+                    className="max-w-[200px] h-10 rounded-xl" 
+                    placeholder="New name" 
+                  />
+                  <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} className="rounded-xl">
+                    <Check className="w-4 h-4 text-green-400" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditing(false)} className="rounded-xl">
+                    <X className="w-4 h-4 text-red-400" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 justify-center mb-6">
+                  <h1 className="text-2xl sm:text-3xl font-display font-bold text-gradient">{user.name}</h1>
+                  <button 
+                    onClick={() => { setNewName(user.name); setEditing(true); }} 
+                    className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                  >
+                    <Edit2 className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              )}
 
-            <div className="text-sm text-muted-foreground">
-              Member since {new Date(user.created_at).toLocaleDateString()}
+              {/* XP Badge */}
+              <motion.div whileHover={{ scale: 1.05 }} className="inline-block mb-6">
+                <div className="xp-badge text-lg px-5 py-2">
+                  <Sparkles className="w-5 h-5" />
+                  <span className="font-bold">{user.xp}</span>
+                  <span>XP</span>
+                </div>
+              </motion.div>
+
+              {/* Member since */}
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                <span>Sailing since {new Date(user.created_at).toLocaleDateString()}</span>
+              </div>
             </div>
           </div>
 
           {/* Achievements Preview */}
           <div className="glass-card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-primary" />
-                <h2 className="font-semibold">My Achievements</h2>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-foreground">My Achievements</h2>
+                  <p className="text-xs text-muted-foreground">{userAchievements?.length || 0} unlocked</p>
+                </div>
               </div>
               <Link to="/achievements">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  View All
+                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                  View All →
                 </Button>
               </Link>
             </div>
             <AchievementsGrid showAll={false} />
           </div>
 
-          {/* XP breakdown info */}
-          <div className="glass-card p-4 text-left">
-            <h3 className="font-semibold mb-2 text-sm">How to earn XP:</h3>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Watch 25% of video: +2 XP</li>
-              <li>• Watch 50% of video: +3 XP</li>
-              <li>• Watch 75% of video: +3 XP</li>
-              <li>• Complete video: +2 XP</li>
-              <li>• Complete PDF: +5 XP</li>
-              <li>• Unlock achievements: +5 to +100 XP</li>
-            </ul>
+          {/* XP breakdown */}
+          <div className="glass-card p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <Zap className="w-5 h-5 text-primary" />
+              </div>
+              <h3 className="font-semibold text-foreground">How to Earn XP</h3>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="bg-primary/5 rounded-xl p-3">
+                <p className="text-primary font-semibold">+2 XP</p>
+                <p className="text-muted-foreground text-xs">Watch 25% of video</p>
+              </div>
+              <div className="bg-primary/5 rounded-xl p-3">
+                <p className="text-primary font-semibold">+3 XP</p>
+                <p className="text-muted-foreground text-xs">Watch 50% of video</p>
+              </div>
+              <div className="bg-primary/5 rounded-xl p-3">
+                <p className="text-primary font-semibold">+3 XP</p>
+                <p className="text-muted-foreground text-xs">Watch 75% of video</p>
+              </div>
+              <div className="bg-primary/5 rounded-xl p-3">
+                <p className="text-primary font-semibold">+2 XP</p>
+                <p className="text-muted-foreground text-xs">Complete video</p>
+              </div>
+              <div className="bg-accent/5 rounded-xl p-3">
+                <p className="text-accent font-semibold">+5 XP</p>
+                <p className="text-muted-foreground text-xs">Complete PDF</p>
+              </div>
+              <div className="bg-amber-500/5 rounded-xl p-3">
+                <p className="text-amber-400 font-semibold">+5-100 XP</p>
+                <p className="text-muted-foreground text-xs">Unlock badges</p>
+              </div>
+            </div>
           </div>
         </motion.div>
       </main>

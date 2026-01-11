@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, User } from 'lucide-react';
+import { Waves, User, Anchor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import logo from '@/assets/logo.png';
 
 interface OnboardingModalProps {
   onComplete: (name: string) => Promise<void>;
@@ -32,7 +33,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animated-bg">
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -40,13 +41,14 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
         className="glass-card w-full max-w-md p-8 mx-4"
       >
         <div className="flex flex-col items-center text-center mb-8">
+          {/* Logo */}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mb-6 glow-effect"
+            className="w-24 h-24 rounded-2xl overflow-hidden mb-6 ring-4 ring-primary/30 shadow-2xl"
           >
-            <Sparkles className="w-10 h-10 text-primary-foreground" />
+            <img src={logo} alt="Study Ocean" className="w-full h-full object-cover" />
           </motion.div>
           
           <motion.h1
@@ -55,7 +57,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             transition={{ delay: 0.3 }}
             className="text-3xl font-display font-bold gradient-text mb-2"
           >
-            Welcome to Aura Study
+            Welcome to Study Ocean
           </motion.h1>
           
           <motion.p
@@ -64,27 +66,27 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             transition={{ delay: 0.4 }}
             className="text-muted-foreground"
           >
-            Your premium learning experience awaits
+            Dive deep into knowledge, emerge wiser
           </motion.p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5 }}
           >
-            <label className="block text-sm font-medium mb-2">
-              What should we call you?
+            <label className="block text-sm font-medium mb-2 text-foreground/80">
+              What should we call you, explorer?
             </label>
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
                 type="text"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="pl-10 bg-secondary/50 border-white/10 focus:border-primary h-12"
+                className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl"
                 autoFocus
               />
             </div>
@@ -101,14 +103,14 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-gradient-to-r from-primary to-accent hover:opacity-90 transition-opacity font-semibold"
+              className="w-full h-12 btn-ocean text-base"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Start Learning
+                  <Anchor className="w-5 h-5 mr-2" />
+                  Set Sail
                 </>
               )}
             </Button>
@@ -121,8 +123,18 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           transition={{ delay: 0.7 }}
           className="text-xs text-muted-foreground text-center mt-6"
         >
-          No account needed • Your progress is saved automatically
+          No account needed • Your voyage is saved automatically
         </motion.p>
+
+        {/* Decorative waves */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.3 }}
+          transition={{ delay: 0.8 }}
+          className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
+        >
+          <Waves className="w-full h-full text-primary/20" />
+        </motion.div>
       </motion.div>
     </div>
   );
