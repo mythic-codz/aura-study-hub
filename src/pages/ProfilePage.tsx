@@ -11,6 +11,7 @@ import { useCheckAchievements, useUserAchievements } from '@/hooks/useAchievemen
 import { AchievementsGrid } from '@/components/AchievementsGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { validateUserName, validateAvatarFile } from '@/lib/validation';
 
 export default function ProfilePage() {
   const { user, loading, updateUser } = useUser();
@@ -30,9 +31,16 @@ export default function ProfilePage() {
   }, [user]);
 
   const handleSave = async () => {
-    if (!newName.trim()) return;
+    // Validate name with Zod schema
+    const validation = validateUserName(newName);
+    if (validation.success === false) {
+      toast.error(validation.error);
+      return;
+    }
+    
+    const validatedName = validation.data;
     setSaving(true);
-    await updateUser({ name: newName.trim() });
+    await updateUser({ name: validatedName });
     setEditing(false);
     setSaving(false);
   };
@@ -41,13 +49,10 @@ export default function ProfilePage() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be less than 2MB');
+    // Validate avatar file with Zod schema
+    const validation = validateAvatarFile(file);
+    if (validation.success === false) {
+      toast.error(validation.error);
       return;
     }
 
