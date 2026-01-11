@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { validateUserName } from '@/lib/validation';
 
 interface OnboardingModalProps {
   onComplete: (name: string) => Promise<void>;
@@ -16,20 +15,16 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validate name with Zod schema
-    const validation = validateUserName(name);
-    if (validation.success === false) {
-      setError(validation.error);
+    if (!name.trim()) {
+      setError('Please enter your name');
       return;
     }
     
-    const validatedName = validation.data;
     setLoading(true);
     setError('');
     
     try {
-      await onComplete(validatedName);
+      await onComplete(name);
     } catch (err) {
       setError('Something went wrong. Please try again.');
       setLoading(false);
