@@ -52,6 +52,7 @@ export type Database = {
       }
       batches: {
         Row: {
+          batch_name: string | null
           data: Json | null
           id: string
           name: string | null
@@ -62,6 +63,7 @@ export type Database = {
           videos: Json | null
         }
         Insert: {
+          batch_name?: string | null
           data?: Json | null
           id: string
           name?: string | null
@@ -72,6 +74,7 @@ export type Database = {
           videos?: Json | null
         }
         Update: {
+          batch_name?: string | null
           data?: Json | null
           id?: string
           name?: string | null
