@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { PDFViewer } from '@/components/PDFViewer';
-import { useBatch } from '@/hooks/useBatches';
+import { useBatch, VideoItem, PdfItem } from '@/hooks/useBatches';
 import { useProgress, useUpdateProgress } from '@/hooks/useProgress';
 
 export default function PlayPage() {
@@ -15,6 +15,43 @@ export default function PlayPage() {
   const [videoDuration, setVideoDuration] = useState<number>(0);
 
   const contentIndex = parseInt(index || '0', 10);
+
+  // Build flat list of content from structured_data OR legacy arrays
+  // This ensures consistent indexing between BatchPage and PlayPage
+  const { allVideos, allPdfs } = useMemo(() => {
+    if (batch?.structured_data?.subjects && batch.structured_data.subjects.length > 0) {
+      const videos: VideoItem[] = [];
+      const pdfs: PdfItem[] = [];
+      
+      batch.structured_data.subjects.forEach((subject) => {
+        subject.topics.forEach((topic) => {
+          topic.videos.forEach((video) => {
+            videos.push(video);
+          });
+          topic.pdfs.forEach((pdf) => {
+            pdfs.push(pdf);
+          });
+        });
+      });
+      
+      return { allVideos: videos, allPdfs: pdfs };
+    }
+    
+    // Legacy: use flat arrays
+    return { 
+      allVideos: batch?.videos || [], 
+      allPdfs: batch?.pdfs || [] 
+    };
+  }, [batch]);
+
+  // Get the content item based on type and index
+  const content = useMemo(() => {
+    if (type === 'video') {
+      return allVideos[contentIndex];
+    } else {
+      return allPdfs[contentIndex];
+    }
+  }, [type, contentIndex, allVideos, allPdfs]);
 
   // Get initial position for resume playback
   const existingProgress = progressData?.find(
@@ -29,8 +66,6 @@ export default function PlayPage() {
       </div>
     );
   }
-
-  const content = type === 'video' ? batch?.videos[contentIndex] : batch?.pdfs[contentIndex];
 
   if (!batch || !content) {
     return (
