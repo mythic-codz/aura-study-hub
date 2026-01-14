@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Waves, User, Anchor } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Waves, User, Anchor, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import logo from '@/assets/logo.png';
@@ -32,85 +32,150 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     }
   };
 
+  // Floating particles for visual interest
+  const particles = [...Array(6)].map((_, i) => ({
+    x: Math.random() * 100,
+    delay: Math.random() * 2,
+    duration: 3 + Math.random() * 2,
+  }));
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animated-bg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center animated-bg overflow-hidden">
+      {/* Floating particles */}
+      {particles.map((particle, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-2 h-2 rounded-full bg-primary/30"
+          style={{ left: `${particle.x}%` }}
+          initial={{ y: '100vh', opacity: 0 }}
+          animate={{ 
+            y: '-100vh', 
+            opacity: [0, 1, 1, 0],
+          }}
+          transition={{
+            duration: particle.duration,
+            delay: particle.delay,
+            repeat: Infinity,
+            ease: 'linear',
+          }}
+        />
+      ))}
+
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        initial={{ opacity: 0, scale: 0.9, y: 30 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="glass-card w-full max-w-md p-8 mx-4"
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="glass-card w-full max-w-md p-8 mx-4 relative overflow-hidden"
       >
-        <div className="flex flex-col items-center text-center mb-8">
-          {/* Logo */}
+        {/* Background decoration */}
+        <div className="absolute inset-0 opacity-5 pointer-events-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-primary to-transparent rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-accent to-transparent rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2" />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center text-center mb-8">
+          {/* Logo with entrance animation */}
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="w-24 h-24 rounded-2xl overflow-hidden mb-6 ring-4 ring-primary/30 shadow-2xl"
+            transition={{ delay: 0.2, type: 'spring', stiffness: 200, damping: 15 }}
+            className="relative"
           >
-            <img src={logo} alt="Study Ocean" className="w-full h-full object-cover" />
+            <div className="w-24 h-24 rounded-2xl overflow-hidden mb-6 ring-4 ring-primary/30 shadow-2xl shadow-primary/20">
+              <img src={logo} alt="Study Ocean" className="w-full h-full object-cover" />
+            </div>
+            <motion.div
+              className="absolute -inset-2 rounded-3xl bg-gradient-to-r from-primary/30 to-accent/30 blur-xl -z-10"
+              animate={{ opacity: [0.5, 0.8, 0.5], scale: [0.9, 1.05, 0.9] }}
+              transition={{ duration: 3, repeat: Infinity }}
+            />
           </motion.div>
           
           <motion.h1
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
             className="text-3xl font-display font-bold gradient-text mb-2"
           >
             Welcome to Study Ocean
           </motion.h1>
           
           <motion.p
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="text-muted-foreground"
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="text-muted-foreground flex items-center gap-2"
           >
+            <Sparkles className="w-4 h-4 text-primary" />
             Dive deep into knowledge, emerge wiser
           </motion.p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
           <motion.div
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
           >
             <label className="block text-sm font-medium mb-2 text-foreground/80">
               What should we call you, explorer?
             </label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <div className="relative group">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
               <Input
                 type="text"
                 placeholder="Enter your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl"
+                className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
                 autoFocus
               />
+              <motion.div
+                className="absolute inset-0 rounded-xl border-2 border-primary/50 pointer-events-none opacity-0"
+                whileFocus={{ opacity: 1 }}
+              />
             </div>
-            {error && (
-              <p className="text-destructive text-sm mt-2">{error}</p>
-            )}
+            <AnimatePresence>
+              {error && (
+                <motion.p
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="text-destructive text-sm mt-2 flex items-center gap-1"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                  {error}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
           >
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 btn-ocean text-base"
+              className="w-full h-12 btn-ocean text-base relative overflow-hidden group"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                <motion.div 
+                  className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                />
               ) : (
                 <>
-                  <Anchor className="w-5 h-5 mr-2" />
-                  Set Sail
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '200%' }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                  />
+                  <Anchor className="w-5 h-5 mr-2 relative z-10" />
+                  <span className="relative z-10">Set Sail</span>
                 </>
               )}
             </Button>
@@ -120,20 +185,27 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="text-xs text-muted-foreground text-center mt-6"
+          transition={{ delay: 0.7, duration: 0.5 }}
+          className="relative z-10 text-xs text-muted-foreground text-center mt-6 flex items-center justify-center gap-2"
         >
+          <span className="w-8 h-px bg-gradient-to-r from-transparent to-muted-foreground/30" />
           No account needed • Your voyage is saved automatically
+          <span className="w-8 h-px bg-gradient-to-l from-transparent to-muted-foreground/30" />
         </motion.p>
 
         {/* Decorative waves */}
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.3 }}
-          transition={{ delay: 0.8 }}
-          className="absolute bottom-0 left-0 right-0 h-20 pointer-events-none"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 0.15, y: 0 }}
+          transition={{ delay: 0.8, duration: 0.5 }}
+          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none overflow-hidden"
         >
-          <Waves className="w-full h-full text-primary/20" />
+          <motion.div
+            animate={{ x: [0, -20, 0] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <Waves className="w-full h-full text-primary" />
+          </motion.div>
         </motion.div>
       </motion.div>
     </div>

@@ -1,17 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, Edit2, Check, X, Loader2, Camera, Trophy, Zap, Calendar, Waves } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useUser } from '@/hooks/useUser';
 import { useCheckAchievements, useUserAchievements } from '@/hooks/useAchievements';
 import { AchievementsGrid } from '@/components/AchievementsGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import logo from '@/assets/logo.png';
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.5, ease: "easeOut" }
+  },
+};
 
 export default function ProfilePage() {
   const { user, loading, updateUser } = useUser();
@@ -35,6 +55,7 @@ export default function ProfilePage() {
     await updateUser({ name: newName.trim() });
     setEditing(false);
     setSaving(false);
+    toast.success('Name updated successfully!');
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,12 +104,7 @@ export default function ProfilePage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen animated-bg flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-        >
-          <img src={logo} alt="Loading" className="w-12 h-12 rounded-xl" />
-        </motion.div>
+        <LoadingSpinner size="lg" message="Loading profile..." />
       </div>
     );
   }
@@ -97,19 +113,27 @@ export default function ProfilePage() {
     <div className="min-h-screen animated-bg">
       <Header />
       <main className="container mx-auto px-4 pt-24 pb-12 max-w-2xl">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="space-y-6"
+        >
           {/* Profile Card */}
-          <div className="glass-card p-8 text-center relative overflow-hidden">
+          <motion.div variants={itemVariants} className="glass-card p-8 text-center relative overflow-hidden">
             {/* Decorative background */}
-            <div className="absolute inset-0 opacity-5">
+            <div className="absolute inset-0 opacity-5 pointer-events-none">
               <Waves className="w-full h-full" />
             </div>
             
             <div className="relative z-10">
               {/* Avatar */}
               <div className="relative inline-block mb-6">
-                <motion.div whileHover={{ scale: 1.05 }}>
-                  <Avatar className="w-28 h-28 ring-4 ring-primary/30 shadow-2xl">
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                >
+                  <Avatar className="w-28 h-28 ring-4 ring-primary/30 shadow-2xl shadow-primary/20">
                     <AvatarImage src={user.avatar_url || undefined} />
                     <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-primary text-4xl font-bold">
                       {user.name.charAt(0).toUpperCase()}
@@ -117,17 +141,24 @@ export default function ProfilePage() {
                   </Avatar>
                 </motion.div>
                 
-                <button
+                <motion.button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingAvatar}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                   className="absolute bottom-1 right-1 w-9 h-9 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-primary-foreground hover:opacity-90 transition-all shadow-lg disabled:opacity-50"
                 >
                   {uploadingAvatar ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <Loader2 className="w-4 h-4" />
+                    </motion.div>
                   ) : (
                     <Camera className="w-4 h-4" />
                   )}
-                </button>
+                </motion.button>
                 
                 <input
                   ref={fileInputRef}
@@ -139,37 +170,67 @@ export default function ProfilePage() {
               </div>
 
               {/* Name */}
-              {editing ? (
-                <div className="flex items-center gap-2 justify-center mb-6">
-                  <Input 
-                    value={newName} 
-                    onChange={(e) => setNewName(e.target.value)} 
-                    className="max-w-[200px] h-10 rounded-xl" 
-                    placeholder="New name" 
-                  />
-                  <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} className="rounded-xl">
-                    <Check className="w-4 h-4 text-green-400" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => setEditing(false)} className="rounded-xl">
-                    <X className="w-4 h-4 text-red-400" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 justify-center mb-6">
-                  <h1 className="text-2xl sm:text-3xl font-display font-bold text-gradient">{user.name}</h1>
-                  <button 
-                    onClick={() => { setNewName(user.name); setEditing(true); }} 
-                    className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+              <AnimatePresence mode="wait">
+                {editing ? (
+                  <motion.div 
+                    key="editing"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="flex items-center gap-2 justify-center mb-6"
                   >
-                    <Edit2 className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              )}
+                    <Input 
+                      value={newName} 
+                      onChange={(e) => setNewName(e.target.value)} 
+                      className="max-w-[200px] h-10 rounded-xl text-center" 
+                      placeholder="New name"
+                      autoFocus
+                    />
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button size="icon" variant="ghost" onClick={handleSave} disabled={saving} className="rounded-xl">
+                        <Check className="w-4 h-4 text-green-400" />
+                      </Button>
+                    </motion.div>
+                    <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+                      <Button size="icon" variant="ghost" onClick={() => setEditing(false)} className="rounded-xl">
+                        <X className="w-4 h-4 text-red-400" />
+                      </Button>
+                    </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    key="display"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center gap-2 justify-center mb-6"
+                  >
+                    <h1 className="text-2xl sm:text-3xl font-display font-bold text-gradient">{user.name}</h1>
+                    <motion.button 
+                      onClick={() => { setNewName(user.name); setEditing(true); }} 
+                      className="p-2 hover:bg-white/10 rounded-xl transition-colors"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Edit2 className="w-4 h-4 text-muted-foreground" />
+                    </motion.button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* XP Badge */}
-              <motion.div whileHover={{ scale: 1.05 }} className="inline-block mb-6">
+              <motion.div 
+                whileHover={{ scale: 1.05, y: -2 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                className="inline-block mb-6"
+              >
                 <div className="xp-badge text-lg px-5 py-2">
-                  <Sparkles className="w-5 h-5" />
+                  <motion.div
+                    animate={{ rotate: [0, 15, -15, 0] }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                  </motion.div>
                   <span className="font-bold">{user.xp}</span>
                   <span>XP</span>
                 </div>
@@ -181,65 +242,71 @@ export default function ProfilePage() {
                 <span>Sailing since {new Date(user.created_at).toLocaleDateString()}</span>
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Achievements Preview */}
-          <div className="glass-card p-6">
+          <motion.div variants={itemVariants} className="glass-card p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center">
+                <motion.div 
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 flex items-center justify-center"
+                  whileHover={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 0.5 }}
+                >
                   <Trophy className="w-5 h-5 text-amber-400" />
-                </div>
+                </motion.div>
                 <div>
                   <h2 className="font-semibold text-foreground">My Achievements</h2>
                   <p className="text-xs text-muted-foreground">{userAchievements?.length || 0} unlocked</p>
                 </div>
               </div>
               <Link to="/achievements">
-                <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                  View All →
-                </Button>
+                <motion.div whileHover={{ x: 3 }} whileTap={{ scale: 0.95 }}>
+                  <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
+                    View All →
+                  </Button>
+                </motion.div>
               </Link>
             </div>
             <AchievementsGrid showAll={false} />
-          </div>
+          </motion.div>
 
           {/* XP breakdown */}
-          <div className="glass-card p-6">
+          <motion.div variants={itemVariants} className="glass-card p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+              <motion.div 
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center"
+                whileHover={{ rotate: [0, -10, 10, 0] }}
+                transition={{ duration: 0.5 }}
+              >
                 <Zap className="w-5 h-5 text-primary" />
-              </div>
+              </motion.div>
               <h3 className="font-semibold text-foreground">How to Earn XP</h3>
             </div>
             
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-primary/5 rounded-xl p-3">
-                <p className="text-primary font-semibold">+2 XP</p>
-                <p className="text-muted-foreground text-xs">Watch 25% of video</p>
-              </div>
-              <div className="bg-primary/5 rounded-xl p-3">
-                <p className="text-primary font-semibold">+3 XP</p>
-                <p className="text-muted-foreground text-xs">Watch 50% of video</p>
-              </div>
-              <div className="bg-primary/5 rounded-xl p-3">
-                <p className="text-primary font-semibold">+3 XP</p>
-                <p className="text-muted-foreground text-xs">Watch 75% of video</p>
-              </div>
-              <div className="bg-primary/5 rounded-xl p-3">
-                <p className="text-primary font-semibold">+2 XP</p>
-                <p className="text-muted-foreground text-xs">Complete video</p>
-              </div>
-              <div className="bg-accent/5 rounded-xl p-3">
-                <p className="text-accent font-semibold">+5 XP</p>
-                <p className="text-muted-foreground text-xs">Complete PDF</p>
-              </div>
-              <div className="bg-amber-500/5 rounded-xl p-3">
-                <p className="text-amber-400 font-semibold">+5-100 XP</p>
-                <p className="text-muted-foreground text-xs">Unlock badges</p>
-              </div>
+              {[
+                { xp: '+2 XP', desc: 'Watch 25% of video', color: 'primary' },
+                { xp: '+3 XP', desc: 'Watch 50% of video', color: 'primary' },
+                { xp: '+3 XP', desc: 'Watch 75% of video', color: 'primary' },
+                { xp: '+2 XP', desc: 'Complete video', color: 'primary' },
+                { xp: '+5 XP', desc: 'Complete PDF', color: 'accent' },
+                { xp: '+5-100 XP', desc: 'Unlock badges', color: 'amber' },
+              ].map((item, i) => (
+                <motion.div 
+                  key={i}
+                  className={`bg-${item.color === 'amber' ? 'amber-500' : item.color}/5 rounded-xl p-3`}
+                  whileHover={{ scale: 1.02, y: -2 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                >
+                  <p className={`${item.color === 'amber' ? 'text-amber-400' : `text-${item.color}`} font-semibold`}>
+                    {item.xp}
+                  </p>
+                  <p className="text-muted-foreground text-xs">{item.desc}</p>
+                </motion.div>
+              ))}
             </div>
-          </div>
+          </motion.div>
         </motion.div>
       </main>
     </div>
