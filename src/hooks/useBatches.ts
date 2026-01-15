@@ -8,6 +8,8 @@ export interface VideoItem {
   url: string;
   duration?: number;
   thumbnail?: string;
+  subject?: string;
+  topic?: string;
 }
 
 export interface PdfItem {
@@ -16,24 +18,25 @@ export interface PdfItem {
   url: string;
   pages?: number;
   thumbnail?: string;
+  subject?: string;
+  topic?: string;
 }
 
-// New format: Content item with type
+// Content item with type (new unified format)
 export interface ContentItem {
   title: string;
-  type: 'video' | 'pdf' | 'test';
+  type: 'video' | 'pdf';
   url: string;
-  content_index?: number;
-  duration?: number;
-  pages?: number;
   thumbnail?: string;
+  subject?: string;
+  topic?: string;
+  globalIndex?: number;
 }
 
-// New format: Topic is just a map of content items
+// Topic contains an array of content items
 export interface Topic {
   name: string;
   items: ContentItem[];
-  // Legacy support
   videos: VideoItem[];
   pdfs: PdfItem[];
 }
@@ -78,75 +81,152 @@ function parsePdfs(pdfs: Json | null): PdfItem[] {
   }).filter((p): p is PdfItem => p !== null);
 }
 
-function parseContentItems(items: Json | null): ContentItem[] {
-  if (!items || !Array.isArray(items)) return [];
-  const result: ContentItem[] = [];
-  for (const item of items) {
-    if (typeof item === 'object' && item !== null && 'title' in item && 'url' in item) {
-      const i = item as Record<string, Json>;
-      result.push({
-        title: String(i.title || ''),
-        type: (i.type as 'video' | 'pdf' | 'test') || 'video',
-        url: String(i.url || ''),
-        content_index: typeof i.content_index === 'number' ? i.content_index : undefined,
-        duration: typeof i.duration === 'number' ? i.duration : undefined,
-        pages: typeof i.pages === 'number' ? i.pages : undefined,
-        thumbnail: typeof i.thumbnail === 'string' ? i.thumbnail : undefined,
-      });
-    }
-  }
-  return result;
-}
-
+/**
+ * Parse structured_data which has the format:
+ * {
+ *   "Source/BatchName": {
+ *     "SubjectName": {
+ *       "TopicName": [{ title, type, url, thumbnail, subject, topic }]
+ *     }
+ *   }
+ * }
+ * 
+ * We flatten the first level (Source) and treat Subject -> Topic -> Items as our hierarchy
+ */
 function parseStructuredData(data: Json | null): StructuredData | null {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  
   const obj = data as Record<string, Json>;
-  
-  // NEW FORMAT: { "Subject Name": { "Topic Name": [ { title, type, url } ] } }
-  // Check if it's the new format (keys are subject names, not 'subjects' array)
   const keys = Object.keys(obj);
-  const isNewFormat = keys.length > 0 && !obj.subjects;
   
-  if (isNewFormat) {
-    const subjects: Subject[] = keys.map((subjectName, subjectIndex) => {
-      const subjectData = obj[subjectName];
-      if (typeof subjectData !== 'object' || subjectData === null || Array.isArray(subjectData)) {
-        return { name: subjectName, topics: [] };
-      }
-      
-      const topicKeys = Object.keys(subjectData as Record<string, Json>);
-      let contentIndex = 0;
-      
-      const topics: Topic[] = topicKeys.map((topicName) => {
-        const topicData = (subjectData as Record<string, Json>)[topicName];
-        const items = parseContentItems(topicData as Json);
-        
-        // Assign content_index if not provided
-        items.forEach((item) => {
-          if (item.content_index === undefined) {
-            item.content_index = contentIndex++;
-          }
-        });
-        
-        // Legacy support: split items into videos and pdfs
-        const videos: VideoItem[] = items
-          .filter(i => i.type === 'video')
-          .map(i => ({ id: String(i.content_index), title: i.title, url: i.url, duration: i.duration, thumbnail: i.thumbnail }));
-        const pdfs: PdfItem[] = items
-          .filter(i => i.type === 'pdf')
-          .map(i => ({ id: String(i.content_index), title: i.title, url: i.url, pages: i.pages, thumbnail: i.thumbnail }));
-        
-        return { name: topicName, items, videos, pdfs };
-      });
-      
-      return { name: subjectName, topics };
-    });
-    
-    return { subjects };
+  if (keys.length === 0) return null;
+  
+  // Check if it's the legacy format with 'subjects' array
+  if (obj.subjects && Array.isArray(obj.subjects)) {
+    return parseLegacyStructuredData(obj);
   }
   
-  // OLD FORMAT: { subjects: [{ name, topics: [{ name, videos, pdfs }] }] }
+  // NEW FORMAT: { "Source": { "Subject": { "Topic": [items] } } }
+  // We iterate through each source (usually just one) and collect all subjects
+  const allSubjects: Subject[] = [];
+  let globalVideoIndex = 0;
+  let globalPdfIndex = 0;
+  
+  for (const sourceKey of keys) {
+    const sourceData = obj[sourceKey];
+    
+    // sourceData should be { "SubjectName": { "TopicName": [items] } }
+    if (typeof sourceData !== 'object' || sourceData === null || Array.isArray(sourceData)) {
+      continue;
+    }
+    
+    const subjectMap = sourceData as Record<string, Json>;
+    
+    for (const subjectName of Object.keys(subjectMap)) {
+      const subjectData = subjectMap[subjectName];
+      
+      // subjectData should be { "TopicName": [items] }
+      if (typeof subjectData !== 'object' || subjectData === null || Array.isArray(subjectData)) {
+        continue;
+      }
+      
+      const topicMap = subjectData as Record<string, Json>;
+      const topics: Topic[] = [];
+      
+      for (const topicName of Object.keys(topicMap)) {
+        const topicItems = topicMap[topicName];
+        
+        // topicItems should be an array of content items
+        if (!Array.isArray(topicItems)) continue;
+        
+        const items: ContentItem[] = [];
+        const videos: VideoItem[] = [];
+        const pdfs: PdfItem[] = [];
+        
+        for (const item of topicItems) {
+          if (typeof item !== 'object' || item === null) continue;
+          
+          const i = item as Record<string, Json>;
+          const title = String(i.title || '');
+          const url = String(i.url || '');
+          const type = String(i.type || '').toLowerCase() as 'video' | 'pdf';
+          const thumbnail = typeof i.thumbnail === 'string' ? i.thumbnail : undefined;
+          
+          if (!title || !url) continue;
+          
+          if (type === 'video') {
+            const videoItem: VideoItem = {
+              id: String(globalVideoIndex),
+              title,
+              url,
+              thumbnail,
+              subject: subjectName,
+              topic: topicName,
+            };
+            videos.push(videoItem);
+            items.push({
+              title,
+              type: 'video',
+              url,
+              thumbnail,
+              subject: subjectName,
+              topic: topicName,
+              globalIndex: globalVideoIndex,
+            });
+            globalVideoIndex++;
+          } else if (type === 'pdf') {
+            const pdfItem: PdfItem = {
+              id: String(globalPdfIndex),
+              title,
+              url,
+              thumbnail,
+              subject: subjectName,
+              topic: topicName,
+            };
+            pdfs.push(pdfItem);
+            items.push({
+              title,
+              type: 'pdf',
+              url,
+              thumbnail,
+              subject: subjectName,
+              topic: topicName,
+              globalIndex: globalPdfIndex,
+            });
+            globalPdfIndex++;
+          }
+        }
+        
+        if (items.length > 0) {
+          topics.push({ name: topicName, items, videos, pdfs });
+        }
+      }
+      
+      if (topics.length > 0) {
+        // Check if subject already exists (from another source)
+        const existingSubject = allSubjects.find(s => s.name === subjectName);
+        if (existingSubject) {
+          existingSubject.topics.push(...topics);
+        } else {
+          allSubjects.push({ name: subjectName, topics });
+        }
+      }
+    }
+  }
+  
+  if (allSubjects.length === 0) return null;
+  
+  return { subjects: allSubjects };
+}
+
+/**
+ * Parse legacy format: { subjects: [{ name, topics: [{ name, videos, pdfs }] }] }
+ */
+function parseLegacyStructuredData(obj: Record<string, Json>): StructuredData | null {
   if (!obj.subjects || !Array.isArray(obj.subjects)) return null;
+  
+  let globalVideoIndex = 0;
+  let globalPdfIndex = 0;
   
   return {
     subjects: (obj.subjects as Json[]).map((subject) => {
@@ -156,27 +236,33 @@ function parseStructuredData(data: Json | null): StructuredData | null {
         topics: Array.isArray(s.topics) 
           ? (s.topics as Json[]).map((topic) => {
               const t = topic as Record<string, Json>;
-              const videos = parseVideos(t.videos as Json);
-              const pdfs = parsePdfs(t.pdfs as Json);
+              const videos = parseVideos(t.videos as Json).map(v => ({
+                ...v,
+                id: String(globalVideoIndex++),
+              }));
+              const pdfs = parsePdfs(t.pdfs as Json).map(p => ({
+                ...p,
+                id: String(globalPdfIndex++),
+              }));
+              
               // Create items array from videos and pdfs for unified access
               const items: ContentItem[] = [
-                ...videos.map((v, i) => ({ 
+                ...videos.map((v) => ({ 
                   title: v.title, 
                   type: 'video' as const, 
                   url: v.url, 
-                  content_index: i,
-                  duration: v.duration,
-                  thumbnail: v.thumbnail
+                  thumbnail: v.thumbnail,
+                  globalIndex: parseInt(v.id || '0'),
                 })),
-                ...pdfs.map((p, i) => ({ 
+                ...pdfs.map((p) => ({ 
                   title: p.title, 
                   type: 'pdf' as const, 
                   url: p.url, 
-                  content_index: videos.length + i,
-                  pages: p.pages,
-                  thumbnail: p.thumbnail
+                  thumbnail: p.thumbnail,
+                  globalIndex: parseInt(p.id || '0'),
                 })),
               ];
+              
               return {
                 name: String(t.name || 'Untitled Topic'),
                 items,
