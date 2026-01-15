@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Play, FileText, Loader2, Video, BookOpen, CheckCircle2, ChevronRight, Layers, FolderOpen } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { useBatch, Subject, Topic } from '@/hooks/useBatches';
+import { useBatch, Subject, Topic, ContentItem, VideoItem, PdfItem } from '@/hooks/useBatches';
 import { useProgress } from '@/hooks/useProgress';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -25,39 +25,41 @@ export default function BatchPage() {
   // Check if batch has structured data
   const hasStructuredData = batch?.structured_data?.subjects && batch.structured_data.subjects.length > 0;
 
-  // Get all videos and PDFs (flat list for legacy support)
-  const allVideos = useMemo(() => {
+  // Build flat lists with global indices for progress tracking
+  const { allVideos, allPdfs, videoIndexMap, pdfIndexMap } = useMemo(() => {
+    const videos: Array<{ video: VideoItem; subjectName: string; topicName: string; globalIndex: number }> = [];
+    const pdfs: Array<{ pdf: PdfItem; subjectName: string; topicName: string; globalIndex: number }> = [];
+    const vidMap = new Map<string, number>();
+    const pdfMap = new Map<string, number>();
+    
     if (hasStructuredData && batch?.structured_data) {
-      const videos: { video: typeof batch.videos[0]; subjectName: string; topicName: string; globalIndex: number }[] = [];
-      let globalIndex = 0;
+      let globalVideoIdx = 0;
+      let globalPdfIdx = 0;
+      
       batch.structured_data.subjects.forEach((subject) => {
         subject.topics.forEach((topic) => {
-          topic.videos.forEach((video) => {
-            videos.push({ video, subjectName: subject.name, topicName: topic.name, globalIndex });
-            globalIndex++;
+          topic.videos.forEach((video, localIdx) => {
+            videos.push({ video, subjectName: subject.name, topicName: topic.name, globalIndex: globalVideoIdx });
+            vidMap.set(`${subject.name}|${topic.name}|${localIdx}`, globalVideoIdx);
+            globalVideoIdx++;
+          });
+          topic.pdfs.forEach((pdf, localIdx) => {
+            pdfs.push({ pdf, subjectName: subject.name, topicName: topic.name, globalIndex: globalPdfIdx });
+            pdfMap.set(`${subject.name}|${topic.name}|${localIdx}`, globalPdfIdx);
+            globalPdfIdx++;
           });
         });
       });
-      return videos;
-    }
-    return batch?.videos.map((video, i) => ({ video, subjectName: '', topicName: '', globalIndex: i })) || [];
-  }, [batch, hasStructuredData]);
-
-  const allPdfs = useMemo(() => {
-    if (hasStructuredData && batch?.structured_data) {
-      const pdfs: { pdf: typeof batch.pdfs[0]; subjectName: string; topicName: string; globalIndex: number }[] = [];
-      let globalIndex = 0;
-      batch.structured_data.subjects.forEach((subject) => {
-        subject.topics.forEach((topic) => {
-          topic.pdfs.forEach((pdf) => {
-            pdfs.push({ pdf, subjectName: subject.name, topicName: topic.name, globalIndex });
-            globalIndex++;
-          });
-        });
+    } else if (batch) {
+      batch.videos.forEach((video, i) => {
+        videos.push({ video, subjectName: '', topicName: '', globalIndex: i });
       });
-      return pdfs;
+      batch.pdfs.forEach((pdf, i) => {
+        pdfs.push({ pdf, subjectName: '', topicName: '', globalIndex: i });
+      });
     }
-    return batch?.pdfs.map((pdf, i) => ({ pdf, subjectName: '', topicName: '', globalIndex: i })) || [];
+    
+    return { allVideos: videos, allPdfs: pdfs, videoIndexMap: vidMap, pdfIndexMap: pdfMap };
   }, [batch, hasStructuredData]);
 
   // Get progress for a specific content item
@@ -88,32 +90,24 @@ export default function BatchPage() {
   const getSubjectProgress = (subject: Subject) => {
     let total = 0;
     let completed = 0;
-    let videoIndex = 0;
-    let pdfIndex = 0;
 
-    // Calculate global indices for this subject
-    batch?.structured_data?.subjects.forEach((s) => {
-      if (s.name === subject.name) {
-        s.topics.forEach((topic) => {
-          topic.videos.forEach(() => {
-            total++;
-            const progress = getContentProgress('video', videoIndex);
-            if (progress.completed) completed++;
-            videoIndex++;
-          });
-          topic.pdfs.forEach(() => {
-            total++;
-            const progress = getContentProgress('pdf', pdfIndex);
-            if (progress.completed) completed++;
-            pdfIndex++;
-          });
-        });
-      } else {
-        s.topics.forEach((topic) => {
-          videoIndex += topic.videos.length;
-          pdfIndex += topic.pdfs.length;
-        });
-      }
+    subject.topics.forEach((topic) => {
+      topic.videos.forEach((_, localIdx) => {
+        total++;
+        const globalIdx = videoIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`);
+        if (globalIdx !== undefined) {
+          const progress = getContentProgress('video', globalIdx);
+          if (progress.completed) completed++;
+        }
+      });
+      topic.pdfs.forEach((_, localIdx) => {
+        total++;
+        const globalIdx = pdfIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`);
+        if (globalIdx !== undefined) {
+          const progress = getContentProgress('pdf', globalIdx);
+          if (progress.completed) completed++;
+        }
+      });
     });
 
     return { completed, total, percent: total > 0 ? (completed / total) * 100 : 0 };
@@ -123,31 +117,22 @@ export default function BatchPage() {
   const getTopicProgress = (subject: Subject, topic: Topic) => {
     let total = 0;
     let completed = 0;
-    let videoIndex = 0;
-    let pdfIndex = 0;
 
-    // Navigate to the topic and calculate indices
-    batch?.structured_data?.subjects.forEach((s) => {
-      s.topics.forEach((t) => {
-        if (s.name === subject.name && t.name === topic.name) {
-          // This is the target topic
-          t.videos.forEach(() => {
-            total++;
-            const progress = getContentProgress('video', videoIndex);
-            if (progress.completed) completed++;
-            videoIndex++;
-          });
-          t.pdfs.forEach(() => {
-            total++;
-            const progress = getContentProgress('pdf', pdfIndex);
-            if (progress.completed) completed++;
-            pdfIndex++;
-          });
-        } else {
-          videoIndex += t.videos.length;
-          pdfIndex += t.pdfs.length;
-        }
-      });
+    topic.videos.forEach((_, localIdx) => {
+      total++;
+      const globalIdx = videoIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`);
+      if (globalIdx !== undefined) {
+        const progress = getContentProgress('video', globalIdx);
+        if (progress.completed) completed++;
+      }
+    });
+    topic.pdfs.forEach((_, localIdx) => {
+      total++;
+      const globalIdx = pdfIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`);
+      if (globalIdx !== undefined) {
+        const progress = getContentProgress('pdf', globalIdx);
+        if (progress.completed) completed++;
+      }
     });
 
     return { completed, total, percent: total > 0 ? (completed / total) * 100 : 0 };
@@ -155,31 +140,14 @@ export default function BatchPage() {
 
   // Get topic content with global indices
   const getTopicContent = (subject: Subject, topic: Topic) => {
-    let videoStartIndex = 0;
-    let pdfStartIndex = 0;
-    let found = false;
-
-    batch?.structured_data?.subjects.forEach((s) => {
-      s.topics.forEach((t) => {
-        if (s.name === subject.name && t.name === topic.name) {
-          found = true;
-          return;
-        }
-        if (!found) {
-          videoStartIndex += t.videos.length;
-          pdfStartIndex += t.pdfs.length;
-        }
-      });
-    });
-
     return {
-      videos: topic.videos.map((video, i) => ({
+      videos: topic.videos.map((video, localIdx) => ({
         video,
-        globalIndex: videoStartIndex + i,
+        globalIndex: videoIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`) ?? 0,
       })),
-      pdfs: topic.pdfs.map((pdf, i) => ({
+      pdfs: topic.pdfs.map((pdf, localIdx) => ({
         pdf,
-        globalIndex: pdfStartIndex + i,
+        globalIndex: pdfIndexMap.get(`${subject.name}|${topic.name}|${localIdx}`) ?? 0,
       })),
     };
   };
@@ -210,7 +178,7 @@ export default function BatchPage() {
       videos: contentFilter === 'pdf' ? [] : content.videos,
       pdfs: contentFilter === 'video' ? [] : content.pdfs,
     };
-  }, [selectedSubject, selectedTopic, contentFilter, batch]);
+  }, [selectedSubject, selectedTopic, contentFilter, videoIndexMap, pdfIndexMap]);
 
   // Legacy flat view for batches without structured_data
   const legacyFilteredVideos = useMemo(() => {
