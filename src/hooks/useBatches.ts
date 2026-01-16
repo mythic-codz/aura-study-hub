@@ -65,7 +65,18 @@ function parseVideos(videos: Json | null): VideoItem[] {
   if (!videos || !Array.isArray(videos)) return [];
   return videos.map((v) => {
     if (typeof v === 'object' && v !== null && 'title' in v && 'url' in v) {
-      return v as unknown as VideoItem;
+      const item = v as Record<string, Json>;
+      const type = String(item.type || '').toLowerCase();
+      // Only include actual videos, not tests or other types
+      if (type === 'video') {
+        return {
+          title: String(item.title || ''),
+          url: String(item.url || ''),
+          thumbnail: typeof item.thumbnail === 'string' ? item.thumbnail : undefined,
+          subject: typeof item.subject === 'string' ? item.subject : undefined,
+          topic: typeof item.topic === 'string' ? item.topic : undefined,
+        } as VideoItem;
+      }
     }
     return null;
   }).filter((v): v is VideoItem => v !== null);
@@ -75,10 +86,55 @@ function parsePdfs(pdfs: Json | null): PdfItem[] {
   if (!pdfs || !Array.isArray(pdfs)) return [];
   return pdfs.map((p) => {
     if (typeof p === 'object' && p !== null && 'title' in p && 'url' in p) {
-      return p as unknown as PdfItem;
+      const item = p as Record<string, Json>;
+      const type = String(item.type || '').toLowerCase();
+      // Only include actual pdfs
+      if (type === 'pdf') {
+        return {
+          title: String(item.title || ''),
+          url: String(item.url || ''),
+          thumbnail: typeof item.thumbnail === 'string' ? item.thumbnail : undefined,
+          subject: typeof item.subject === 'string' ? item.subject : undefined,
+          topic: typeof item.topic === 'string' ? item.topic : undefined,
+        } as PdfItem;
+      }
     }
     return null;
   }).filter((p): p is PdfItem => p !== null);
+}
+
+/**
+ * Parse the flat 'data' array from batches table
+ * This contains all content items with type field
+ */
+function parseDataColumn(data: Json | null): { videos: VideoItem[]; pdfs: PdfItem[] } {
+  if (!data || !Array.isArray(data)) return { videos: [], pdfs: [] };
+  
+  const videos: VideoItem[] = [];
+  const pdfs: PdfItem[] = [];
+  
+  data.forEach((item, index) => {
+    if (typeof item !== 'object' || item === null) return;
+    
+    const i = item as Record<string, Json>;
+    const title = String(i.title || '');
+    const url = String(i.url || '');
+    const type = String(i.type || '').toLowerCase();
+    const thumbnail = typeof i.thumbnail === 'string' ? i.thumbnail : undefined;
+    const subject = typeof i.subject === 'string' ? i.subject : undefined;
+    const topic = typeof i.topic === 'string' ? i.topic : undefined;
+    
+    if (!title || !url) return;
+    
+    // Skip tests and other non-video/pdf types
+    if (type === 'video') {
+      videos.push({ id: String(index), title, url, thumbnail, subject, topic });
+    } else if (type === 'pdf') {
+      pdfs.push({ id: String(index), title, url, thumbnail, subject, topic });
+    }
+  });
+  
+  return { videos, pdfs };
 }
 
 /**
@@ -287,12 +343,28 @@ export function useBatches() {
 
       if (error) throw error;
       
-      return (data || []).map(batch => ({
-        ...batch,
-        videos: parseVideos(batch.videos),
-        pdfs: parsePdfs(batch.pdfs),
-        structured_data: parseStructuredData(batch.structured_data),
-      })) as Batch[];
+      return (data || []).map(batch => {
+        // Try structured_data first
+        const structured = parseStructuredData(batch.structured_data);
+        
+        // Parse videos/pdfs columns
+        let videos = parseVideos(batch.videos);
+        let pdfs = parsePdfs(batch.pdfs);
+        
+        // If videos/pdfs are empty, try parsing from 'data' column
+        if (videos.length === 0 && pdfs.length === 0 && batch.data) {
+          const fromData = parseDataColumn(batch.data);
+          videos = fromData.videos;
+          pdfs = fromData.pdfs;
+        }
+        
+        return {
+          ...batch,
+          videos,
+          pdfs,
+          structured_data: structured,
+        };
+      }) as Batch[];
     },
   });
 }
@@ -310,11 +382,25 @@ export function useBatch(batchId: string) {
       if (error) throw error;
       if (!data) return null;
       
+      // Try structured_data first
+      const structured = parseStructuredData(data.structured_data);
+      
+      // Parse videos/pdfs columns
+      let videos = parseVideos(data.videos);
+      let pdfs = parsePdfs(data.pdfs);
+      
+      // If videos/pdfs are empty, try parsing from 'data' column
+      if (videos.length === 0 && pdfs.length === 0 && data.data) {
+        const fromData = parseDataColumn(data.data);
+        videos = fromData.videos;
+        pdfs = fromData.pdfs;
+      }
+      
       return {
         ...data,
-        videos: parseVideos(data.videos),
-        pdfs: parsePdfs(data.pdfs),
-        structured_data: parseStructuredData(data.structured_data),
+        videos,
+        pdfs,
+        structured_data: structured,
       } as Batch;
     },
     enabled: !!batchId,

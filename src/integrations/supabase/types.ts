@@ -86,6 +86,27 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          batch_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       progress: {
         Row: {
           batch_id: string
