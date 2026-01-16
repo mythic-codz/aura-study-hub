@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, FileText, Clock, Layers, Rocket } from 'lucide-react';
+import { Play, FileText, Clock, Layers, Rocket, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { Batch } from '@/hooks/useBatches';
+import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
 
 interface BatchCardProps {
@@ -14,6 +15,17 @@ export function BatchCard({ batch, index }: BatchCardProps) {
   const totalVideos = batch.videos.length;
   const totalPdfs = batch.pdfs.length;
   const totalContent = totalVideos + totalPdfs;
+  
+  const { data: favorites } = useFavorites();
+  const toggleFavorite = useToggleFavorite();
+  
+  const isFavorite = favorites?.some(f => f.batch_id === batch.id) ?? false;
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleFavorite.mutate({ batchId: batch.id, isFavorite });
+  };
 
   return (
     <motion.div
@@ -36,6 +48,23 @@ export function BatchCard({ batch, index }: BatchCardProps) {
         
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent opacity-80" />
+
+        {/* Favorite button */}
+        <motion.button
+          onClick={handleFavoriteClick}
+          className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          disabled={toggleFavorite.isPending}
+        >
+          <Heart 
+            className={`w-4 h-4 transition-colors ${
+              isFavorite 
+                ? 'fill-red-500 text-red-500' 
+                : 'text-muted-foreground hover:text-red-400'
+            }`} 
+          />
+        </motion.button>
 
         {/* Content count badge */}
         <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background/80 backdrop-blur-md text-xs font-medium border border-white/10">
