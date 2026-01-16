@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
-  SkipBack, SkipForward, Check 
+  SkipBack, SkipForward, Check, Loader2
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import {
@@ -36,6 +37,7 @@ function getStoredVolume(): number {
 export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -45,8 +47,74 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   const [showControls, setShowControls] = useState(true);
   const [buffered, setBuffered] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const hideControlsTimer = useRef<NodeJS.Timeout>();
   const lastProgressReport = useRef(0);
+
+  // Check if URL is an HLS stream
+  const isHlsStream = src?.includes('.m3u8');
+
+  // Initialize HLS or native video
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !src) return;
+
+    setIsLoading(true);
+
+    // Cleanup previous HLS instance
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+
+    if (isHlsStream) {
+      if (Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: true,
+          lowLatencyMode: true,
+        });
+        hlsRef.current = hls;
+        hls.loadSource(src);
+        hls.attachMedia(video);
+
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          video.volume = volume;
+          if (initialTime > 0) {
+            video.currentTime = initialTime;
+          }
+        });
+
+        hls.on(Hls.Events.ERROR, (_, data) => {
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        // Native HLS support (Safari)
+        video.src = src;
+      }
+    } else {
+      // Regular video file
+      video.src = src;
+    }
+
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
+    };
+  }, [src, isHlsStream, initialTime, volume]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -70,9 +138,22 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
       video.volume = volume;
-      if (initialTime > 0) {
+      if (initialTime > 0 && !isHlsStream) {
         video.currentTime = initialTime;
       }
+    };
+
+    const handleCanPlay = () => {
+      setIsLoading(false);
+    };
+
+    const handleWaiting = () => {
+      setIsLoading(true);
+    };
+
+    const handlePlaying = () => {
+      setIsLoading(false);
+      setPlaying(true);
     };
 
     const handleEnded = () => {
@@ -85,14 +166,20 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('waiting', handleWaiting);
+    video.addEventListener('playing', handlePlaying);
     video.addEventListener('ended', handleEnded);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('waiting', handleWaiting);
+      video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('ended', handleEnded);
     };
-  }, [onProgress, initialTime, volume]);
+  }, [onProgress, initialTime, volume, isHlsStream]);
 
   // Track fullscreen changes
   useEffect(() => {
@@ -244,14 +331,23 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     >
       <video
         ref={videoRef}
-        src={src}
         className="w-full h-full object-contain"
         onClick={togglePlay}
         playsInline
       />
 
+      {/* Loading spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            <span className="text-sm text-muted-foreground">Loading video...</span>
+          </div>
+        </div>
+      )}
+
       {/* Center play button */}
-      {!playing && (
+      {!playing && !isLoading && (
         <motion.button
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
