@@ -1,15 +1,13 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Search, Clock, X, Waves, Zap, Target, Heart } from 'lucide-react';
+import { BookOpen, Search, X, Waves, Zap, Target, Heart } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { BatchCard } from '@/components/BatchCard';
-import { ContinueCard } from '@/components/ContinueCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { useUser } from '@/hooks/useUser';
 import { useBatches } from '@/hooks/useBatches';
-import { useIncompleteProgress } from '@/hooks/useIncompleteProgress';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useBatchProgress } from '@/hooks/useBatchProgress';
 import { Input } from '@/components/ui/input';
@@ -39,9 +37,8 @@ const itemVariants = {
 type ViewFilter = 'all' | 'favorites';
 
 const Index = () => {
-  const { user, loading: userLoading, needsOnboarding, createUser } = useUser();
+  const { user, loading: userLoading, needsOnboarding, createUser, authMode, switchAuthMode } = useUser();
   const { data: batches, isLoading: batchesLoading } = useBatches();
-  const { data: incompleteItems, isLoading: incompleteLoading } = useIncompleteProgress();
   const { data: favorites } = useFavorites();
   const { data: batchProgressMap } = useBatchProgress(batches);
   
@@ -85,7 +82,7 @@ const Index = () => {
   }
 
   if (needsOnboarding) {
-    return <OnboardingModal onComplete={async (name) => { await createUser(name); }} />;
+    return <OnboardingModal onComplete={createUser} mode={authMode} onSwitchMode={switchAuthMode} />;
   }
 
   return (
@@ -202,42 +199,14 @@ const Index = () => {
                 <Target className="w-6 h-6 text-orange-400" />
               </motion.div>
               <div className="text-left">
-                <p className="text-2xl sm:text-3xl font-bold text-foreground">{incompleteItems?.length || 0}</p>
-                <p className="text-xs text-muted-foreground font-medium">In Progress</p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{favorites?.length || 0}</p>
+                <p className="text-xs text-muted-foreground font-medium">Favorites</p>
               </div>
             </motion.div>
           </motion.div>
         </motion.section>
 
-        {/* Continue Where You Left Off Section */}
-        {!incompleteLoading && incompleteItems && incompleteItems.length > 0 && (
-          <motion.section
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="mb-16"
-          >
-            <div className="flex items-center gap-3 mb-6">
-              <motion.div 
-                className="w-1.5 h-8 bg-gradient-to-b from-orange-400 to-amber-500 rounded-full"
-                animate={{ scaleY: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <Clock className="w-5 h-5 text-orange-400" />
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Continue Learning</h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {incompleteItems.slice(0, 6).map((item, index) => (
-                <ContinueCard
-                  key={`${item.batchId}-${item.type}-${item.index}`}
-                  item={item}
-                  index={index}
-                />
-              ))}
-            </div>
-          </motion.section>
-        )}
+        {/* Continue section removed */}
 
         {/* All Batches Section with Search and Favorites Filter */}
         <motion.section

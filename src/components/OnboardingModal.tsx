@@ -1,16 +1,25 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Waves, User, Anchor, Sparkles } from 'lucide-react';
+import { Waves, User, Anchor, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import logo from '@/assets/logo.png';
 
 interface OnboardingModalProps {
-  onComplete: (name: string) => Promise<void>;
+  onComplete: (name: string, password: string) => Promise<any>;
+  mode?: 'register' | 'login';
+  existingUserName?: string;
+  onSwitchMode?: () => void;
+}
+  existingUserName?: string;
+  onSwitchMode?: () => void;
 }
 
-export function OnboardingModal({ onComplete }: OnboardingModalProps) {
-  const [name, setName] = useState('');
+export function OnboardingModal({ onComplete, mode = 'register', existingUserName, onSwitchMode }: OnboardingModalProps) {
+  const [name, setName] = useState(existingUserName || '');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -21,13 +30,28 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
       return;
     }
     
+    if (!password.trim()) {
+      setError('Please enter a password');
+      return;
+    }
+
+    if (password.length < 4) {
+      setError('Password must be at least 4 characters');
+      return;
+    }
+
+    if (mode === 'register' && password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
     try {
-      await onComplete(name);
-    } catch (err) {
-      setError('Something went wrong. Please try again.');
+      await onComplete(name, password);
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -97,7 +121,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             transition={{ delay: 0.3, duration: 0.5 }}
             className="text-3xl font-display font-bold gradient-text mb-2"
           >
-            Welcome to Study Ocean
+            {mode === 'login' ? 'Welcome Back' : 'Welcome to Study Ocean'}
           </motion.h1>
           
           <motion.p
@@ -107,18 +131,18 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
             className="text-muted-foreground flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4 text-primary" />
-            Dive deep into knowledge, emerge wiser
+            {mode === 'login' ? 'Enter your credentials to continue' : 'Dive deep into knowledge, emerge wiser'}
           </motion.p>
         </div>
 
-        <form onSubmit={handleSubmit} className="relative z-10 space-y-5">
+        <form onSubmit={handleSubmit} className="relative z-10 space-y-4">
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.5, duration: 0.5 }}
           >
             <label className="block text-sm font-medium mb-2 text-foreground/80">
-              What should we call you, explorer?
+              {mode === 'login' ? 'Your name' : 'What should we call you, explorer?'}
             </label>
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
@@ -128,32 +152,78 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
-                autoFocus
-              />
-              <motion.div
-                className="absolute inset-0 rounded-xl border-2 border-primary/50 pointer-events-none opacity-0"
-                whileFocus={{ opacity: 1 }}
+                autoFocus={mode !== 'login'}
               />
             </div>
-            <AnimatePresence>
-              {error && (
-                <motion.p
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="text-destructive text-sm mt-2 flex items-center gap-1"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                  {error}
-                </motion.p>
-              )}
-            </AnimatePresence>
           </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.55, duration: 0.5 }}
+          >
+            <label className="block text-sm font-medium mb-2 text-foreground/80">
+              Password
+            </label>
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pl-12 pr-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+              </button>
+            </div>
+          </motion.div>
+
+          {mode === 'register' && (
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+            >
+              <label className="block text-sm font-medium mb-2 text-foreground/80">
+                Confirm Password
+              </label>
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
+                />
+              </div>
+            </motion.div>
+          )}
+
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="text-destructive text-sm flex items-center gap-1"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.5 }}
+            transition={{ delay: 0.65, duration: 0.5 }}
           >
             <Button
               type="submit"
@@ -175,21 +245,39 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                   />
                   <Anchor className="w-5 h-5 mr-2 relative z-10" />
-                  <span className="relative z-10">Set Sail</span>
+                  <span className="relative z-10">{mode === 'login' ? 'Login' : 'Set Sail'}</span>
                 </>
               )}
             </Button>
           </motion.div>
         </form>
 
+        {onSwitchMode && (
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7, duration: 0.5 }}
+            className="relative z-10 text-sm text-muted-foreground text-center mt-4"
+          >
+            {mode === 'login' ? "New here? " : "Already have an account? "}
+            <button
+              type="button"
+              onClick={onSwitchMode}
+              className="text-primary hover:underline font-medium"
+            >
+              {mode === 'login' ? 'Create account' : 'Login'}
+            </button>
+          </motion.p>
+        )}
+
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.7, duration: 0.5 }}
-          className="relative z-10 text-xs text-muted-foreground text-center mt-6 flex items-center justify-center gap-2"
+          transition={{ delay: 0.75, duration: 0.5 }}
+          className="relative z-10 text-xs text-muted-foreground text-center mt-4 flex items-center justify-center gap-2"
         >
           <span className="w-8 h-px bg-gradient-to-r from-transparent to-muted-foreground/30" />
-          No account needed • Your voyage is saved automatically
+          Your voyage is saved automatically
           <span className="w-8 h-px bg-gradient-to-l from-transparent to-muted-foreground/30" />
         </motion.p>
 

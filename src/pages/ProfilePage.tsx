@@ -1,14 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Edit2, Check, X, Loader2, Camera, Trophy, Zap, Calendar, Waves } from 'lucide-react';
+import { Sparkles, Edit2, Check, X, Loader2, Camera, Trophy, Zap, Calendar, Waves, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { BatchCard } from '@/components/BatchCard';
 import { useUser } from '@/hooks/useUser';
 import { useCheckAchievements, useUserAchievements } from '@/hooks/useAchievements';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useBatches } from '@/hooks/useBatches';
+import { useBatchProgress } from '@/hooks/useBatchProgress';
 import { AchievementsGrid } from '@/components/AchievementsGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,11 +41,19 @@ export default function ProfilePage() {
   const { user, loading, updateUser } = useUser();
   const { checkAndUnlock } = useCheckAchievements();
   const { data: userAchievements } = useUserAchievements();
+  const { data: favorites } = useFavorites();
+  const { data: batches } = useBatches();
+  const { data: batchProgressMap } = useBatchProgress(batches);
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Get favorite batches
+  const favoriteBatches = batches?.filter(batch => 
+    favorites?.some(f => f.batch_id === batch.id)
+  ) || [];
 
   useEffect(() => {
     if (user) {
@@ -243,6 +255,42 @@ export default function ProfilePage() {
               </div>
             </div>
           </motion.div>
+
+          {/* Favorite Courses */}
+          {favoriteBatches.length > 0 && (
+            <motion.div variants={itemVariants} className="glass-card p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <motion.div 
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/5 flex items-center justify-center"
+                  whileHover={{ rotate: [0, -10, 10, 0] }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Heart className="w-5 h-5 text-red-400" />
+                </motion.div>
+                <div>
+                  <h2 className="font-semibold text-foreground">Favorite Courses</h2>
+                  <p className="text-xs text-muted-foreground">{favoriteBatches.length} course{favoriteBatches.length !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-4">
+                {favoriteBatches.slice(0, 3).map((batch, index) => (
+                  <BatchCard 
+                    key={batch.id} 
+                    batch={batch} 
+                    index={index} 
+                    progress={batchProgressMap?.[batch.id]}
+                    compact
+                  />
+                ))}
+                {favoriteBatches.length > 3 && (
+                  <Link to="/" className="text-center text-sm text-primary hover:underline py-2">
+                    View all {favoriteBatches.length} favorites →
+                  </Link>
+                )}
+              </div>
+            </motion.div>
+          )}
 
           {/* Achievements Preview */}
           <motion.div variants={itemVariants} className="glass-card p-6">

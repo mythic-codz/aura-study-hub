@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from './useUser';
+import { useFavorites } from './useFavorites';
 import { toast } from 'sonner';
 
 export interface Achievement {
@@ -132,6 +133,7 @@ export function useCheckAchievements() {
   const { user } = useUser();
   const { data: achievements } = useAchievements();
   const { data: userAchievements } = useUserAchievements();
+  const { data: favorites } = useFavorites();
   const unlockAchievement = useUnlockAchievement();
 
   const checkAndUnlock = async () => {
@@ -147,6 +149,7 @@ export function useCheckAchievements() {
 
     const completedVideos = progressData?.filter(p => p.content_type === 'video' && p.completed).length || 0;
     const completedPdfs = progressData?.filter(p => p.content_type === 'pdf' && p.completed).length || 0;
+    const favoriteCount = favorites?.length || 0;
     
     // Count completed batches (unique batch_ids where all content is done)
     const batchProgress = new Map<string, { total: number; completed: number }>();
@@ -159,7 +162,7 @@ export function useCheckAchievements() {
       if (p.completed) bp.completed++;
     });
     
-    // For now, count batches where user has completed at least some content
+    // Count batches where user has started learning
     const batchesStarted = batchProgress.size;
     const currentXP = user.xp;
 
@@ -170,8 +173,15 @@ export function useCheckAchievements() {
 
       switch (achievement.type) {
         case 'first_steps':
+          // Handle different first_steps achievements
           if (achievement.icon === 'play' && completedVideos >= 1) shouldUnlock = true;
           if (achievement.icon === 'book-open' && completedPdfs >= 1) shouldUnlock = true;
+          // PDF milestones
+          if (achievement.icon === 'file-text' && completedPdfs >= achievement.requirement) shouldUnlock = true;
+          if (achievement.icon === 'library' && completedPdfs >= achievement.requirement) shouldUnlock = true;
+          if (achievement.icon === 'book-marked' && completedPdfs >= achievement.requirement) shouldUnlock = true;
+          // Favorites achievements
+          if (achievement.icon === 'heart' && favoriteCount >= achievement.requirement) shouldUnlock = true;
           break;
         
         case 'videos_watched':
@@ -188,7 +198,11 @@ export function useCheckAchievements() {
       }
 
       if (shouldUnlock) {
-        await unlockAchievement.mutateAsync(achievement.id);
+        try {
+          await unlockAchievement.mutateAsync(achievement.id);
+        } catch (err) {
+          console.error('Error unlocking achievement:', err);
+        }
       }
     }
   };
