@@ -1,17 +1,20 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Play, FileText, Clock, Layers, Rocket, Heart } from 'lucide-react';
+import { Play, FileText, Clock, Layers, Rocket, Heart, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import type { Batch } from '@/hooks/useBatches';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
+import type { BatchProgress } from '@/hooks/useBatchProgress';
 import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
 
 interface BatchCardProps {
   batch: Batch;
   index: number;
+  progress?: BatchProgress;
 }
 
-export function BatchCard({ batch, index }: BatchCardProps) {
+export function BatchCard({ batch, index, progress }: BatchCardProps) {
   const totalVideos = batch.videos.length;
   const totalPdfs = batch.pdfs.length;
   const totalContent = totalVideos + totalPdfs;
@@ -20,6 +23,8 @@ export function BatchCard({ batch, index }: BatchCardProps) {
   const toggleFavorite = useToggleFavorite();
   
   const isFavorite = favorites?.some(f => f.batch_id === batch.id) ?? false;
+  const progressPercent = progress?.progressPercent ?? 0;
+  const isComplete = progressPercent === 100;
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -71,6 +76,14 @@ export function BatchCard({ batch, index }: BatchCardProps) {
           <Layers className="w-3.5 h-3.5 text-primary" />
           <span>{totalContent} items</span>
         </div>
+
+        {/* Completion badge */}
+        {isComplete && (
+          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/90 backdrop-blur-md text-xs font-medium text-white">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Completed</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
@@ -78,6 +91,25 @@ export function BatchCard({ batch, index }: BatchCardProps) {
         <h3 className="font-display font-semibold text-lg mb-3 line-clamp-2">
           {batch.name || 'Untitled Course'}
         </h3>
+        
+        {/* Progress bar */}
+        {progressPercent > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-muted-foreground">Progress</span>
+              <span className={`font-medium ${isComplete ? 'text-green-500' : 'text-primary'}`}>
+                {progressPercent}%
+              </span>
+            </div>
+            <Progress 
+              value={progressPercent} 
+              className={`h-2 ${isComplete ? '[&>div]:bg-green-500' : ''}`}
+            />
+            <div className="flex items-center justify-between text-xs mt-1 text-muted-foreground/70">
+              <span>{progress?.completedItems || 0} / {progress?.totalItems || totalContent} completed</span>
+            </div>
+          </div>
+        )}
         
         {/* Meta info */}
         <div className="flex items-center flex-wrap gap-2.5 text-sm mb-4">
@@ -109,14 +141,14 @@ export function BatchCard({ batch, index }: BatchCardProps) {
               size="lg"
             >
               <Rocket className="w-4 h-4 group-hover:animate-pulse" />
-              Launch Session
+              {progressPercent > 0 && progressPercent < 100 ? 'Continue' : 'Launch Session'}
             </Button>
           </Link>
         </div>
       </div>
 
       {/* Bottom gradient line */}
-      <div className="h-1 w-full bg-gradient-to-r from-primary via-accent to-primary" />
+      <div className={`h-1 w-full ${isComplete ? 'bg-green-500' : 'bg-gradient-to-r from-primary via-accent to-primary'}`} />
     </motion.div>
   );
 }

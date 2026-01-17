@@ -11,6 +11,7 @@ import { useUser } from '@/hooks/useUser';
 import { useBatches } from '@/hooks/useBatches';
 import { useIncompleteProgress } from '@/hooks/useIncompleteProgress';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useBatchProgress } from '@/hooks/useBatchProgress';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
@@ -42,6 +43,7 @@ const Index = () => {
   const { data: batches, isLoading: batchesLoading } = useBatches();
   const { data: incompleteItems, isLoading: incompleteLoading } = useIncompleteProgress();
   const { data: favorites } = useFavorites();
+  const { data: batchProgressMap } = useBatchProgress(batches);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [viewFilter, setViewFilter] = useState<ViewFilter>('all');
@@ -331,7 +333,12 @@ const Index = () => {
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredBatches.map((batch, index) => (
-                  <BatchCard key={batch.id} batch={batch} index={index} />
+                  <BatchCard 
+                    key={batch.id} 
+                    batch={batch} 
+                    index={index} 
+                    progress={batchProgressMap?.[batch.id]}
+                  />
                 ))}
               </div>
             </>
