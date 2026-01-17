@@ -12,9 +12,10 @@ interface BatchCardProps {
   batch: Batch;
   index: number;
   progress?: BatchProgress;
+  compact?: boolean;
 }
 
-export function BatchCard({ batch, index, progress }: BatchCardProps) {
+export function BatchCard({ batch, index, progress, compact = false }: BatchCardProps) {
   const totalVideos = batch.videos.length;
   const totalPdfs = batch.pdfs.length;
   const totalContent = totalVideos + totalPdfs;
@@ -34,57 +35,74 @@ export function BatchCard({ batch, index, progress }: BatchCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: compact ? 10 : 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ 
         delay: index * 0.08, 
         duration: 0.5,
         ease: [0.22, 1, 0.36, 1]
       }}
-      className="glass-card overflow-hidden flex flex-col"
+      className={`glass-card overflow-hidden flex ${compact ? 'flex-row items-center gap-4 p-3' : 'flex-col'}`}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden">
+      <div className={`relative overflow-hidden ${compact ? 'w-16 h-16 rounded-lg flex-shrink-0' : 'aspect-video'}`}>
         <img
           src={batch.thumbnail || defaultThumbnail}
           alt={batch.name || 'Course thumbnail'}
           className="w-full h-full object-cover"
         />
         
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent opacity-80" />
+        {!compact && (
+          <>
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent opacity-80" />
 
-        {/* Favorite button */}
-        <motion.button
-          onClick={handleFavoriteClick}
-          className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          disabled={toggleFavorite.isPending}
-        >
-          <Heart 
-            className={`w-4 h-4 transition-colors ${
-              isFavorite 
-                ? 'fill-red-500 text-red-500' 
-                : 'text-muted-foreground hover:text-red-400'
-            }`} 
-          />
-        </motion.button>
+            {/* Favorite button */}
+            <motion.button
+              onClick={handleFavoriteClick}
+              className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              disabled={toggleFavorite.isPending}
+            >
+              <Heart 
+                className={`w-4 h-4 transition-colors ${
+                  isFavorite 
+                    ? 'fill-red-500 text-red-500' 
+                    : 'text-muted-foreground hover:text-red-400'
+                }`} 
+              />
+            </motion.button>
 
-        {/* Content count badge */}
-        <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background/80 backdrop-blur-md text-xs font-medium border border-white/10">
-          <Layers className="w-3.5 h-3.5 text-primary" />
-          <span>{totalContent} items</span>
-        </div>
+            {/* Content count badge */}
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-background/80 backdrop-blur-md text-xs font-medium border border-white/10">
+              <Layers className="w-3.5 h-3.5 text-primary" />
+              <span>{totalContent} items</span>
+            </div>
 
-        {/* Completion badge */}
-        {isComplete && (
-          <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/90 backdrop-blur-md text-xs font-medium text-white">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Completed</span>
-          </div>
+            {/* Completion badge */}
+            {isComplete && (
+              <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-500/90 backdrop-blur-md text-xs font-medium text-white">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Completed</span>
+              </div>
+            )}
+          </>
         )}
       </div>
+
+      {/* Compact mode content */}
+      {compact ? (
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-sm truncate">{batch.name || 'Untitled Course'}</h3>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+            <span>{totalVideos} videos</span>
+            <span>•</span>
+            <span>{progressPercent}% complete</span>
+          </div>
+        </div>
+      ) : (
+        <>
 
       {/* Content */}
       <div className="p-4 sm:p-5 flex-1 flex flex-col">
@@ -147,8 +165,10 @@ export function BatchCard({ batch, index, progress }: BatchCardProps) {
         </div>
       </div>
 
-      {/* Bottom gradient line */}
-      <div className={`h-1 w-full ${isComplete ? 'bg-green-500' : 'bg-gradient-to-r from-primary via-accent to-primary'}`} />
+        {/* Bottom gradient line */}
+        <div className={`h-1 w-full ${isComplete ? 'bg-green-500' : 'bg-gradient-to-r from-primary via-accent to-primary'}`} />
+      </>
+      )}
     </motion.div>
   );
 }

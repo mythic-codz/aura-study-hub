@@ -1,7 +1,8 @@
 import { motion } from 'framer-motion';
 import { 
   Trophy, Star, Sparkles, Zap, Crown, Award, 
-  Play, Video, BookOpen, GraduationCap 
+  Play, Video, BookOpen, GraduationCap, Target, Medal,
+  Flame, BookmarkCheck, ShieldCheck, Heart, FileText, Library, BookMarked, Tv, MonitorPlay, LucideIcon
 } from 'lucide-react';
 import { Achievement } from '@/hooks/useAchievements';
 
@@ -12,7 +13,7 @@ interface AchievementBadgeProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const iconMap: Record<string, React.ElementType> = {
+const iconMap: Record<string, LucideIcon> = {
   trophy: Trophy,
   star: Star,
   sparkles: Sparkles,
@@ -23,6 +24,17 @@ const iconMap: Record<string, React.ElementType> = {
   video: Video,
   'book-open': BookOpen,
   'graduation-cap': GraduationCap,
+  target: Target,
+  medal: Medal,
+  flame: Flame,
+  'bookmark-check': BookmarkCheck,
+  'shield-check': ShieldCheck,
+  heart: Heart,
+  'file-text': FileText,
+  library: Library,
+  'book-marked': BookMarked,
+  tv: Tv,
+  'monitor-play': MonitorPlay,
 };
 
 const colorMap: Record<string, string> = {
@@ -34,6 +46,14 @@ const colorMap: Record<string, string> = {
   yellow: 'from-yellow-300 to-yellow-500',
   orange: 'from-orange-400 to-orange-600',
   red: 'from-red-400 to-red-600',
+  teal: 'from-teal-400 to-teal-600',
+  emerald: 'from-emerald-400 to-emerald-600',
+  lime: 'from-lime-400 to-lime-600',
+  amber: 'from-amber-400 to-amber-600',
+  rose: 'from-rose-400 to-rose-600',
+  violet: 'from-violet-400 to-violet-600',
+  indigo: 'from-indigo-400 to-indigo-600',
+  pink: 'from-pink-400 to-pink-600',
 };
 
 const sizeClasses = {

@@ -218,6 +218,7 @@ export type Database = {
           id: string
           ip_address: string | null
           name: string
+          password_hash: string | null
           updated_at: string
           xp: number
         }
@@ -228,6 +229,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           name: string
+          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
@@ -238,6 +240,7 @@ export type Database = {
           id?: string
           ip_address?: string | null
           name?: string
+          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
