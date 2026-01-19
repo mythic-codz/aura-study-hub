@@ -11,9 +11,6 @@ interface OnboardingModalProps {
   existingUserName?: string;
   onSwitchMode?: () => void;
 }
-  existingUserName?: string;
-  onSwitchMode?: () => void;
-}
 
 export function OnboardingModal({ onComplete, mode = 'register', existingUserName, onSwitchMode }: OnboardingModalProps) {
   const [name, setName] = useState(existingUserName || '');
