@@ -1,12 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Home, Trophy, User, Sparkles, Award } from 'lucide-react';
+import { Home, Trophy, User, Sparkles, Award, LogOut } from 'lucide-react';
 import { useUser } from '@/hooks/useUser';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import logo from '@/assets/logo.png';
 
 export function Header() {
-  const { user } = useUser();
+  const { user, logout } = useUser();
   const location = useLocation();
 
   const navItems = [
@@ -116,25 +123,39 @@ export function Header() {
                 <span className="font-bold">{user.xp}</span>
                 <span className="hidden sm:inline font-medium">XP</span>
               </motion.div>
-              <Link to="/profile">
-                <motion.div
-                  whileHover={{ scale: 1.08 }}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                  className="relative"
-                >
-                  <Avatar className="w-9 h-9 sm:w-10 sm:h-10 ring-2 ring-primary/20 hover:ring-primary/50 transition-all duration-300 shadow-lg hover:shadow-primary/20">
-                    <AvatarImage src={user.avatar_url || undefined} />
-                    <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-primary font-bold text-sm">
-                      {user.name.charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <motion.div
-                    className="absolute -inset-0.5 rounded-full bg-gradient-to-r from-primary/40 to-accent/40 blur-sm -z-10 opacity-0 group-hover:opacity-100"
-                    whileHover={{ opacity: 1 }}
-                  />
-                </motion.div>
-              </Link>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <motion.button
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+                    className="relative focus:outline-none"
+                  >
+                    <Avatar className="w-9 h-9 sm:w-10 sm:h-10 ring-2 ring-primary/20 hover:ring-primary/50 transition-all duration-300 shadow-lg hover:shadow-primary/20">
+                      <AvatarImage src={user.avatar_url || undefined} />
+                      <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-primary font-bold text-sm">
+                        {user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </motion.button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="glass-card border-white/10 min-w-[160px]">
+                  <Link to="/profile">
+                    <DropdownMenuItem className="cursor-pointer gap-2">
+                      <User className="w-4 h-4" />
+                      Profile
+                    </DropdownMenuItem>
+                  </Link>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem 
+                    onClick={logout}
+                    className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           )}
         </div>
