@@ -54,6 +54,11 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   // Check if URL is an HLS stream
   const isHlsStream = src?.includes('.m3u8');
 
+  // Track the last known position to restore after buffering
+  const lastKnownTimeRef = useRef<number>(0);
+  const lastPlaybackRateRef = useRef<number>(1);
+  const wasPlayingBeforeBufferRef = useRef<boolean>(false);
+
   // Initialize HLS or native video
   useEffect(() => {
     const video = videoRef.current;
@@ -72,6 +77,10 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         const hls = new Hls({
           enableWorker: true,
           lowLatencyMode: true,
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          maxBufferSize: 60 * 1000 * 1000, // 60MB
+          maxBufferHole: 0.5,
         });
         hlsRef.current = hls;
         hls.loadSource(src);
@@ -79,24 +88,56 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.volume = volume;
+          video.playbackRate = playbackRate;
           if (initialTime > 0) {
             video.currentTime = initialTime;
+            lastKnownTimeRef.current = initialTime;
           }
         });
 
         hls.on(Hls.Events.ERROR, (_, data) => {
+          // Store current position before any recovery
+          const currentPos = video.currentTime;
+          const currentRate = video.playbackRate;
+          
           if (data.fatal) {
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
+                // Save position before recovery
+                lastKnownTimeRef.current = currentPos;
+                lastPlaybackRateRef.current = currentRate;
                 hls.startLoad();
+                // Restore position after a short delay
+                setTimeout(() => {
+                  if (video && lastKnownTimeRef.current > 0) {
+                    video.currentTime = lastKnownTimeRef.current;
+                    video.playbackRate = lastPlaybackRateRef.current;
+                  }
+                }, 100);
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
+                lastKnownTimeRef.current = currentPos;
+                lastPlaybackRateRef.current = currentRate;
                 hls.recoverMediaError();
+                setTimeout(() => {
+                  if (video && lastKnownTimeRef.current > 0) {
+                    video.currentTime = lastKnownTimeRef.current;
+                    video.playbackRate = lastPlaybackRateRef.current;
+                  }
+                }, 100);
                 break;
               default:
                 hls.destroy();
                 break;
             }
+          }
+        });
+
+        // Handle fragment loading to preserve position
+        hls.on(Hls.Events.FRAG_LOADING, () => {
+          if (video.currentTime > 0) {
+            lastKnownTimeRef.current = video.currentTime;
+            lastPlaybackRateRef.current = video.playbackRate;
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -114,7 +155,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         hlsRef.current = null;
       }
     };
-  }, [src, isHlsStream, initialTime, volume]);
+  }, [src, isHlsStream, initialTime, volume, playbackRate]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -122,6 +163,10 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
     const handleTimeUpdate = () => {
       setCurrentTime(video.currentTime);
+      // Always track the last known time for buffering recovery
+      if (video.currentTime > 0) {
+        lastKnownTimeRef.current = video.currentTime;
+      }
       if (video.buffered.length > 0) {
         setBuffered(video.buffered.end(video.buffered.length - 1));
       }
@@ -138,22 +183,36 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     const handleLoadedMetadata = () => {
       setDuration(video.duration);
       video.volume = volume;
+      video.playbackRate = playbackRate;
       if (initialTime > 0 && !isHlsStream) {
         video.currentTime = initialTime;
+        lastKnownTimeRef.current = initialTime;
       }
     };
 
     const handleCanPlay = () => {
       setIsLoading(false);
+      // Restore playback rate after buffering
+      if (video.playbackRate !== playbackRate) {
+        video.playbackRate = playbackRate;
+      }
     };
 
     const handleWaiting = () => {
+      // Save position and state before buffering
+      lastKnownTimeRef.current = video.currentTime;
+      lastPlaybackRateRef.current = video.playbackRate;
+      wasPlayingBeforeBufferRef.current = !video.paused;
       setIsLoading(true);
     };
 
     const handlePlaying = () => {
       setIsLoading(false);
       setPlaying(true);
+      // Ensure playback rate is preserved after buffering
+      if (video.playbackRate !== playbackRate) {
+        video.playbackRate = playbackRate;
+      }
     };
 
     const handleEnded = () => {
@@ -164,12 +223,28 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       }
     };
 
+    // Handle stalled event (buffering)
+    const handleStalled = () => {
+      lastKnownTimeRef.current = video.currentTime;
+      lastPlaybackRateRef.current = video.playbackRate;
+    };
+
+    // Handle seeking to restore after buffer
+    const handleSeeked = () => {
+      // Preserve playback rate after seeking
+      if (video.playbackRate !== playbackRate) {
+        video.playbackRate = playbackRate;
+      }
+    };
+
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('ended', handleEnded);
+    video.addEventListener('stalled', handleStalled);
+    video.addEventListener('seeked', handleSeeked);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -178,8 +253,10 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('ended', handleEnded);
+      video.removeEventListener('stalled', handleStalled);
+      video.removeEventListener('seeked', handleSeeked);
     };
-  }, [onProgress, initialTime, volume, isHlsStream]);
+  }, [onProgress, initialTime, volume, isHlsStream, playbackRate]);
 
   // Track fullscreen changes
   useEffect(() => {
