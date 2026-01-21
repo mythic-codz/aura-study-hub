@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getOrCreateDeviceId, storeDeviceId } from '@/lib/deviceId';
+import { getOrCreateDeviceId, storeDeviceId, getDeviceId } from '@/lib/deviceId';
 
 export interface User {
   id: string;
@@ -13,6 +13,9 @@ export interface User {
   password_hash?: string | null;
 }
 
+// Session storage key for remembering logged in user
+const SESSION_USER_KEY = 'aura-study-user-session';
+
 // Simple hash function for password (client-side)
 async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -22,43 +25,94 @@ async function hashPassword(password: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Store session user info
+function storeSession(userId: string, deviceId: string) {
+  try {
+    localStorage.setItem(SESSION_USER_KEY, JSON.stringify({ userId, deviceId }));
+  } catch {}
+}
+
+// Get stored session
+function getStoredSession(): { userId: string; deviceId: string } | null {
+  try {
+    const stored = localStorage.getItem(SESSION_USER_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch {}
+  return null;
+}
+
+// Clear session
+function clearSession() {
+  try {
+    localStorage.removeItem(SESSION_USER_KEY);
+  } catch {}
+}
+
 export function useUser() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [authMode, setAuthMode] = useState<'register' | 'login'>('register');
-  const [existingUserName, setExistingUserName] = useState<string | undefined>();
+  const [authMode, setAuthMode] = useState<'register' | 'login'>('login'); // Default to login
 
   const fetchUser = useCallback(async () => {
-    const deviceId = getOrCreateDeviceId();
+    // First, check if we have a stored session
+    const session = getStoredSession();
     
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('device_id', deviceId)
-      .maybeSingle();
+    if (session) {
+      // Ensure device ID is set correctly
+      storeDeviceId(session.deviceId);
+      
+      // Try to fetch user by stored session
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', session.userId)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching user:', error);
-      setLoading(false);
-      return;
+      if (!error && data) {
+        setUser(data);
+        setNeedsOnboarding(false);
+        setLoading(false);
+        return;
+      }
+      
+      // Session invalid, clear it
+      clearSession();
+    }
+    
+    // Check by device ID as fallback
+    const deviceId = getDeviceId();
+    
+    if (deviceId) {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('device_id', deviceId)
+        .maybeSingle();
+
+      if (!error && data) {
+        // Store session for future
+        storeSession(data.id, data.device_id);
+        setUser(data);
+        setNeedsOnboarding(false);
+        setLoading(false);
+        return;
+      }
     }
 
-    if (data) {
-      setUser(data);
-      setNeedsOnboarding(false);
-    } else {
-      setNeedsOnboarding(true);
-    }
+    // No user found, show login/register modal
+    setNeedsOnboarding(true);
+    setAuthMode('login'); // Default to login
     setLoading(false);
   }, []);
 
-  const createUser = useCallback(async (name: string, password: string) => {
+  const createOrLogin = useCallback(async (name: string, password: string) => {
     const trimmedName = name.trim().toLowerCase();
-    const deviceId = getOrCreateDeviceId();
     const passwordHash = await hashPassword(password);
     
-    // First, check if a user with this name already exists
+    // First, check if a user with this name exists
     const { data: existingUser, error: searchError } = await supabase
       .from('users')
       .select('*')
@@ -69,24 +123,23 @@ export function useUser() {
       console.error('Error searching for user:', searchError);
     }
 
-    // If user with same name exists, verify password
+    // If user with same name exists, verify password and log in
     if (existingUser) {
       if (existingUser.password_hash !== passwordHash) {
         throw new Error('Incorrect password');
       }
-      // Update the device ID in localStorage to match the existing user's device
+      // Update device ID to match existing user's device for RLS
       storeDeviceId(existingUser.device_id);
+      storeSession(existingUser.id, existingUser.device_id);
       setUser(existingUser);
       setNeedsOnboarding(false);
       return existingUser;
     }
 
-    // If we're in login mode but user doesn't exist
-    if (authMode === 'login') {
-      throw new Error('User not found. Please create an account first.');
-    }
-
-    // Try to get IP address (will be null if fetch fails)
+    // User doesn't exist - create new account (auto-register)
+    const newDeviceId = getOrCreateDeviceId();
+    
+    // Try to get IP address
     let ipAddress = null;
     try {
       const response = await fetch('https://api.ipify.org?format=json');
@@ -99,7 +152,7 @@ export function useUser() {
     const { data, error } = await supabase
       .from('users')
       .insert({
-        device_id: deviceId,
+        device_id: newDeviceId,
         ip_address: ipAddress,
         name: trimmedName,
         password_hash: passwordHash,
@@ -112,39 +165,19 @@ export function useUser() {
       throw error;
     }
 
+    storeSession(data.id, data.device_id);
     setUser(data);
     setNeedsOnboarding(false);
     return data;
-  }, [authMode]);
+  }, []);
 
-  const loginUser = useCallback(async (name: string, password: string) => {
-    const trimmedName = name.trim().toLowerCase();
-    const passwordHash = await hashPassword(password);
-    
-    const { data: existingUser, error } = await supabase
-      .from('users')
-      .select('*')
-      .ilike('name', trimmedName)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error finding user:', error);
-      throw new Error('Error finding user');
-    }
-
-    if (!existingUser) {
-      throw new Error('User not found');
-    }
-
-    if (existingUser.password_hash !== passwordHash) {
-      throw new Error('Incorrect password');
-    }
-
-    // Update device ID to link this device to the account
-    storeDeviceId(existingUser.device_id);
-    setUser(existingUser);
-    setNeedsOnboarding(false);
-    return existingUser;
+  const logout = useCallback(() => {
+    clearSession();
+    setUser(null);
+    setNeedsOnboarding(true);
+    setAuthMode('login');
+    // Generate new device ID for this device
+    getOrCreateDeviceId();
   }, []);
 
   const updateUser = useCallback(async (updates: Partial<Pick<User, 'name' | 'avatar_url'>>) => {
@@ -199,11 +232,11 @@ export function useUser() {
     loading,
     needsOnboarding,
     authMode,
-    existingUserName,
-    createUser,
-    loginUser,
+    createUser: createOrLogin, // Renamed for backward compatibility
+    loginUser: createOrLogin,  // Same function handles both
     updateUser,
     addXP,
+    logout,
     refetch: fetchUser,
     switchAuthMode,
   };

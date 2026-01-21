@@ -32,6 +32,11 @@ export function getStoredDeviceId(): string | null {
   return localStorage.getItem('aura_device_id');
 }
 
+// Alias for getStoredDeviceId
+export function getDeviceId(): string | null {
+  return getStoredDeviceId();
+}
+
 export function storeDeviceId(deviceId: string): void {
   localStorage.setItem('aura_device_id', deviceId);
 }

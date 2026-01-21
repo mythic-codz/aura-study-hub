@@ -118,7 +118,7 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
             transition={{ delay: 0.3, duration: 0.5 }}
             className="text-3xl font-display font-bold gradient-text mb-2"
           >
-            {mode === 'login' ? 'Welcome Back' : 'Welcome to Study Ocean'}
+            Welcome to Study Ocean
           </motion.h1>
           
           <motion.p
@@ -128,7 +128,7 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
             className="text-muted-foreground flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4 text-primary" />
-            {mode === 'login' ? 'Enter your credentials to continue' : 'Dive deep into knowledge, emerge wiser'}
+            {mode === 'login' ? 'Login or create a new account' : 'Create your account to get started'}
           </motion.p>
         </div>
 
@@ -139,7 +139,7 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
             transition={{ delay: 0.5, duration: 0.5 }}
           >
             <label className="block text-sm font-medium mb-2 text-foreground/80">
-              {mode === 'login' ? 'Your name' : 'What should we call you, explorer?'}
+              Your name
             </label>
             <div className="relative group">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
@@ -242,27 +242,40 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                   />
                   <Anchor className="w-5 h-5 mr-2 relative z-10" />
-                  <span className="relative z-10">{mode === 'login' ? 'Login' : 'Set Sail'}</span>
+                  <span className="relative z-10">{mode === 'login' ? 'Login / Create Account' : 'Create Account'}</span>
                 </>
               )}
             </Button>
           </motion.div>
         </form>
 
+        {/* Hint text */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7, duration: 0.5 }}
+          className="relative z-10 text-xs text-muted-foreground text-center mt-4"
+        >
+          {mode === 'login' 
+            ? "Enter your credentials. New users will be automatically registered."
+            : "Create an account to track your progress across devices."
+          }
+        </motion.p>
+
         {onSwitchMode && (
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.7, duration: 0.5 }}
-            className="relative z-10 text-sm text-muted-foreground text-center mt-4"
+            transition={{ delay: 0.72, duration: 0.5 }}
+            className="relative z-10 text-sm text-muted-foreground text-center mt-2"
           >
-            {mode === 'login' ? "New here? " : "Already have an account? "}
+            {mode === 'login' ? "Want to register manually? " : "Already have an account? "}
             <button
               type="button"
               onClick={onSwitchMode}
               className="text-primary hover:underline font-medium"
             >
-              {mode === 'login' ? 'Create account' : 'Login'}
+              {mode === 'login' ? 'Switch to Register' : 'Login'}
             </button>
           </motion.p>
         )}
