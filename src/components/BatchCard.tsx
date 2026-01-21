@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Play, FileText, Clock, Layers, Rocket, Heart, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +7,8 @@ import type { Batch } from '@/hooks/useBatches';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
 import type { BatchProgress } from '@/hooks/useBatchProgress';
 import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
+import confetti from 'canvas-confetti';
+import { useState, useRef, useCallback } from 'react';
 
 interface BatchCardProps {
   batch: Batch;
@@ -22,14 +24,46 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
   
   const { data: favorites } = useFavorites();
   const toggleFavorite = useToggleFavorite();
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [showHearts, setShowHearts] = useState(false);
   
   const isFavorite = favorites?.some(f => f.batch_id === batch.id) ?? false;
   const progressPercent = progress?.progressPercent ?? 0;
   const isComplete = progressPercent === 100;
 
+  const triggerConfetti = useCallback(() => {
+    if (!buttonRef.current) return;
+    
+    const rect = buttonRef.current.getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+    // Heart-shaped confetti burst
+    confetti({
+      particleCount: 50,
+      spread: 60,
+      origin: { x, y },
+      colors: ['#ff6b6b', '#ee5a5a', '#ff8787', '#ffa8a8', '#ff4757'],
+      shapes: ['circle'],
+      scalar: 0.8,
+      gravity: 0.8,
+      ticks: 60,
+    });
+
+    // Show floating hearts
+    setShowHearts(true);
+    setTimeout(() => setShowHearts(false), 1000);
+  }, []);
+
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Only trigger confetti when adding to favorites
+    if (!isFavorite) {
+      triggerConfetti();
+    }
+    
     toggleFavorite.mutate({ batchId: batch.id, isFavorite });
   };
 
@@ -59,19 +93,53 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
 
             {/* Favorite button */}
             <motion.button
+              ref={buttonRef}
               onClick={handleFavoriteClick}
-              className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors"
+              className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors overflow-visible"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               disabled={toggleFavorite.isPending}
             >
-              <Heart 
-                className={`w-4 h-4 transition-colors ${
-                  isFavorite 
-                    ? 'fill-red-500 text-red-500' 
-                    : 'text-muted-foreground hover:text-red-400'
-                }`} 
-              />
+              <AnimatePresence>
+                {showHearts && (
+                  <>
+                    {[...Array(5)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ 
+                          opacity: 1, 
+                          scale: 0.5, 
+                          x: 0, 
+                          y: 0 
+                        }}
+                        animate={{ 
+                          opacity: 0, 
+                          scale: 1.2, 
+                          x: (Math.random() - 0.5) * 60,
+                          y: -40 - Math.random() * 30
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.8, ease: "easeOut" }}
+                        className="absolute top-0 left-1/2 -translate-x-1/2 pointer-events-none"
+                      >
+                        <Heart className="w-4 h-4 fill-red-500 text-red-500" />
+                      </motion.div>
+                    ))}
+                  </>
+                )}
+              </AnimatePresence>
+              <motion.div
+                animate={isFavorite ? { scale: [1, 1.3, 1] } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                <Heart 
+                  className={`w-4 h-4 transition-all duration-300 ${
+                    isFavorite 
+                      ? 'fill-red-500 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]' 
+                      : 'text-muted-foreground hover:text-red-400'
+                  }`} 
+                />
+              </motion.div>
             </motion.button>
 
             {/* Content count badge */}
