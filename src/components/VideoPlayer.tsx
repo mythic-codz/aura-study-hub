@@ -55,11 +55,17 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   const isHlsStream = src?.includes('.m3u8');
 
   // Track the last known position to restore after buffering
-  const lastKnownTimeRef = useRef<number>(0);
-  const lastPlaybackRateRef = useRef<number>(1);
+  const lastKnownTimeRef = useRef<number>(initialTime);
+  const playbackRateRef = useRef<number>(1);
   const wasPlayingBeforeBufferRef = useRef<boolean>(false);
+  const isRecoveringRef = useRef<boolean>(false);
 
-  // Initialize HLS or native video
+  // Keep playbackRateRef in sync with state
+  useEffect(() => {
+    playbackRateRef.current = playbackRate;
+  }, [playbackRate]);
+
+  // Initialize HLS or native video - NOTE: playbackRate removed from deps to prevent restart
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !src) return;
@@ -88,7 +94,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           video.volume = volume;
-          video.playbackRate = playbackRate;
+          video.playbackRate = playbackRateRef.current;
           if (initialTime > 0) {
             video.currentTime = initialTime;
             lastKnownTimeRef.current = initialTime;
@@ -101,30 +107,16 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
           const currentRate = video.playbackRate;
           
           if (data.fatal) {
+            isRecoveringRef.current = true;
+            lastKnownTimeRef.current = currentPos > 0 ? currentPos : lastKnownTimeRef.current;
+            playbackRateRef.current = currentRate > 0 ? currentRate : playbackRateRef.current;
+            
             switch (data.type) {
               case Hls.ErrorTypes.NETWORK_ERROR:
-                // Save position before recovery
-                lastKnownTimeRef.current = currentPos;
-                lastPlaybackRateRef.current = currentRate;
                 hls.startLoad();
-                // Restore position after a short delay
-                setTimeout(() => {
-                  if (video && lastKnownTimeRef.current > 0) {
-                    video.currentTime = lastKnownTimeRef.current;
-                    video.playbackRate = lastPlaybackRateRef.current;
-                  }
-                }, 100);
                 break;
               case Hls.ErrorTypes.MEDIA_ERROR:
-                lastKnownTimeRef.current = currentPos;
-                lastPlaybackRateRef.current = currentRate;
                 hls.recoverMediaError();
-                setTimeout(() => {
-                  if (video && lastKnownTimeRef.current > 0) {
-                    video.currentTime = lastKnownTimeRef.current;
-                    video.playbackRate = lastPlaybackRateRef.current;
-                  }
-                }, 100);
                 break;
               default:
                 hls.destroy();
@@ -133,11 +125,26 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
           }
         });
 
+        // Handle buffer stall recovery
+        hls.on(Hls.Events.BUFFER_APPENDED, () => {
+          if (isRecoveringRef.current && video) {
+            const targetTime = lastKnownTimeRef.current;
+            const targetRate = playbackRateRef.current;
+            
+            setTimeout(() => {
+              if (video && targetTime > 0) {
+                video.currentTime = targetTime;
+                video.playbackRate = targetRate;
+              }
+              isRecoveringRef.current = false;
+            }, 50);
+          }
+        });
+
         // Handle fragment loading to preserve position
         hls.on(Hls.Events.FRAG_LOADING, () => {
-          if (video.currentTime > 0) {
+          if (video.currentTime > 0 && !isRecoveringRef.current) {
             lastKnownTimeRef.current = video.currentTime;
-            lastPlaybackRateRef.current = video.playbackRate;
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -155,7 +162,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         hlsRef.current = null;
       }
     };
-  }, [src, isHlsStream, initialTime, volume, playbackRate]);
+  }, [src, isHlsStream, initialTime, volume]); // Removed playbackRate from deps
 
   useEffect(() => {
     const video = videoRef.current;
@@ -193,15 +200,21 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     const handleCanPlay = () => {
       setIsLoading(false);
       // Restore playback rate after buffering
-      if (video.playbackRate !== playbackRate) {
-        video.playbackRate = playbackRate;
+      if (video.playbackRate !== playbackRateRef.current) {
+        video.playbackRate = playbackRateRef.current;
+      }
+      // Auto-resume if we were playing before buffering
+      if (wasPlayingBeforeBufferRef.current && video.paused) {
+        video.play().catch(() => {});
+        wasPlayingBeforeBufferRef.current = false;
       }
     };
 
     const handleWaiting = () => {
       // Save position and state before buffering
-      lastKnownTimeRef.current = video.currentTime;
-      lastPlaybackRateRef.current = video.playbackRate;
+      if (video.currentTime > 0) {
+        lastKnownTimeRef.current = video.currentTime;
+      }
       wasPlayingBeforeBufferRef.current = !video.paused;
       setIsLoading(true);
     };
@@ -210,13 +223,14 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       setIsLoading(false);
       setPlaying(true);
       // Ensure playback rate is preserved after buffering
-      if (video.playbackRate !== playbackRate) {
-        video.playbackRate = playbackRate;
+      if (video.playbackRate !== playbackRateRef.current) {
+        video.playbackRate = playbackRateRef.current;
       }
     };
 
     const handleEnded = () => {
       setPlaying(false);
+      wasPlayingBeforeBufferRef.current = false;
       // Report 100% completion when video ends
       if (onProgress) {
         onProgress(100, video.duration, video.duration);
@@ -225,15 +239,26 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
 
     // Handle stalled event (buffering)
     const handleStalled = () => {
-      lastKnownTimeRef.current = video.currentTime;
-      lastPlaybackRateRef.current = video.playbackRate;
+      if (video.currentTime > 0) {
+        lastKnownTimeRef.current = video.currentTime;
+      }
+      wasPlayingBeforeBufferRef.current = !video.paused;
     };
 
     // Handle seeking to restore after buffer
     const handleSeeked = () => {
       // Preserve playback rate after seeking
-      if (video.playbackRate !== playbackRate) {
-        video.playbackRate = playbackRate;
+      if (video.playbackRate !== playbackRateRef.current) {
+        video.playbackRate = playbackRateRef.current;
+      }
+    };
+
+    // Handle pause to track if user paused manually
+    const handlePause = () => {
+      setPlaying(false);
+      // Only mark as not-was-playing if this is a user pause (not buffering)
+      if (!isLoading) {
+        wasPlayingBeforeBufferRef.current = false;
       }
     };
 
@@ -245,6 +270,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     video.addEventListener('ended', handleEnded);
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('seeked', handleSeeked);
+    video.addEventListener('pause', handlePause);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -255,8 +281,9 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('seeked', handleSeeked);
+      video.removeEventListener('pause', handlePause);
     };
-  }, [onProgress, initialTime, volume, isHlsStream, playbackRate]);
+  }, [onProgress, initialTime, volume, isHlsStream, isLoading]);
 
   // Track fullscreen changes
   useEffect(() => {
@@ -305,12 +332,19 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     setMuted(!muted);
   }, [muted]);
 
-  const changePlaybackRate = (rate: number) => {
+  const changePlaybackRate = useCallback((rate: number) => {
     const video = videoRef.current;
     if (!video) return;
+    // Store current position before changing rate
+    const currentPos = video.currentTime;
     video.playbackRate = rate;
+    playbackRateRef.current = rate;
     setPlaybackRate(rate);
-  };
+    // Ensure position is maintained
+    if (Math.abs(video.currentTime - currentPos) > 0.5) {
+      video.currentTime = currentPos;
+    }
+  }, []);
 
   const skip = useCallback((seconds: number) => {
     const video = videoRef.current;
