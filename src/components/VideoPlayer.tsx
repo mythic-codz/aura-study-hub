@@ -205,7 +205,19 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       }
       // Auto-resume if we were playing before buffering
       if (wasPlayingBeforeBufferRef.current && video.paused) {
-        video.play().catch(() => {});
+        const playPromise = video.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            setPlaying(true);
+          }).catch(() => {
+            // Retry after a short delay if autoplay fails
+            setTimeout(() => {
+              if (wasPlayingBeforeBufferRef.current && video.paused) {
+                video.play().then(() => setPlaying(true)).catch(() => {});
+              }
+            }, 100);
+          });
+        }
         wasPlayingBeforeBufferRef.current = false;
       }
     };
@@ -215,13 +227,17 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       if (video.currentTime > 0) {
         lastKnownTimeRef.current = video.currentTime;
       }
-      wasPlayingBeforeBufferRef.current = !video.paused;
+      // Only mark as was-playing if video was actually playing
+      if (!video.paused) {
+        wasPlayingBeforeBufferRef.current = true;
+      }
       setIsLoading(true);
     };
 
     const handlePlaying = () => {
       setIsLoading(false);
       setPlaying(true);
+      wasPlayingBeforeBufferRef.current = false;
       // Ensure playback rate is preserved after buffering
       if (video.playbackRate !== playbackRateRef.current) {
         video.playbackRate = playbackRateRef.current;
@@ -242,7 +258,18 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       if (video.currentTime > 0) {
         lastKnownTimeRef.current = video.currentTime;
       }
-      wasPlayingBeforeBufferRef.current = !video.paused;
+      // Only mark as was-playing if video was actually playing
+      if (!video.paused) {
+        wasPlayingBeforeBufferRef.current = true;
+      }
+      setIsLoading(true);
+      
+      // Auto-retry playback after stall
+      setTimeout(() => {
+        if (wasPlayingBeforeBufferRef.current && video.paused && video.readyState >= 3) {
+          video.play().then(() => setPlaying(true)).catch(() => {});
+        }
+      }, 500);
     };
 
     // Handle seeking to restore after buffer
@@ -251,37 +278,54 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       if (video.playbackRate !== playbackRateRef.current) {
         video.playbackRate = playbackRateRef.current;
       }
+      // Resume playback if we were playing before seeking
+      if (wasPlayingBeforeBufferRef.current && video.paused) {
+        video.play().then(() => setPlaying(true)).catch(() => {});
+      }
     };
 
-    // Handle pause to track if user paused manually
+    // Handle pause - only mark manual pauses
     const handlePause = () => {
       setPlaying(false);
-      // Only mark as not-was-playing if this is a user pause (not buffering)
-      if (!isLoading) {
+      // Don't clear wasPlayingBeforeBufferRef if we're loading (buffering pause)
+      // Only clear it for user-initiated pauses
+      if (!isLoading && video.readyState >= 3) {
         wasPlayingBeforeBufferRef.current = false;
+      }
+    };
+
+    // Handle suspend (browser may pause to save resources)
+    const handleSuspend = () => {
+      if (!video.paused && video.currentTime > 0) {
+        wasPlayingBeforeBufferRef.current = true;
+        lastKnownTimeRef.current = video.currentTime;
       }
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
     video.addEventListener('loadedmetadata', handleLoadedMetadata);
     video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('canplaythrough', handleCanPlay);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
     video.addEventListener('ended', handleEnded);
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('seeked', handleSeeked);
     video.addEventListener('pause', handlePause);
+    video.addEventListener('suspend', handleSuspend);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
       video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('canplaythrough', handleCanPlay);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
       video.removeEventListener('ended', handleEnded);
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('pause', handlePause);
+      video.removeEventListener('suspend', handleSuspend);
     };
   }, [onProgress, initialTime, volume, isHlsStream, isLoading]);
 
