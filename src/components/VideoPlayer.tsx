@@ -205,29 +205,17 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       }
       // Auto-resume if we were playing before buffering
       if (wasPlayingBeforeBufferRef.current && video.paused) {
-        const playPromise = video.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            setPlaying(true);
-          }).catch(() => {
-            // Retry after a short delay if autoplay fails
-            setTimeout(() => {
-              if (wasPlayingBeforeBufferRef.current && video.paused) {
-                video.play().then(() => setPlaying(true)).catch(() => {});
-              }
-            }, 100);
-          });
-        }
+        video.play().then(() => setPlaying(true)).catch(() => {});
         wasPlayingBeforeBufferRef.current = false;
       }
     };
 
     const handleWaiting = () => {
-      // Save position and state before buffering
+      // Save position before buffering
       if (video.currentTime > 0) {
         lastKnownTimeRef.current = video.currentTime;
       }
-      // Only mark as was-playing if video was actually playing
+      // Track if we were playing
       if (!video.paused) {
         wasPlayingBeforeBufferRef.current = true;
       }
@@ -238,7 +226,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       setIsLoading(false);
       setPlaying(true);
       wasPlayingBeforeBufferRef.current = false;
-      // Ensure playback rate is preserved after buffering
+      // Ensure playback rate is preserved
       if (video.playbackRate !== playbackRateRef.current) {
         video.playbackRate = playbackRateRef.current;
       }
@@ -247,59 +235,29 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     const handleEnded = () => {
       setPlaying(false);
       wasPlayingBeforeBufferRef.current = false;
-      // Report 100% completion when video ends
       if (onProgress) {
         onProgress(100, video.duration, video.duration);
       }
     };
 
-    // Handle stalled event (buffering)
     const handleStalled = () => {
       if (video.currentTime > 0) {
         lastKnownTimeRef.current = video.currentTime;
       }
-      // Only mark as was-playing if video was actually playing
       if (!video.paused) {
         wasPlayingBeforeBufferRef.current = true;
       }
       setIsLoading(true);
-      
-      // Auto-retry playback after stall
-      setTimeout(() => {
-        if (wasPlayingBeforeBufferRef.current && video.paused && video.readyState >= 3) {
-          video.play().then(() => setPlaying(true)).catch(() => {});
-        }
-      }, 500);
     };
 
-    // Handle seeking to restore after buffer
     const handleSeeked = () => {
-      // Preserve playback rate after seeking
       if (video.playbackRate !== playbackRateRef.current) {
         video.playbackRate = playbackRateRef.current;
       }
-      // Resume playback if we were playing before seeking
-      if (wasPlayingBeforeBufferRef.current && video.paused) {
-        video.play().then(() => setPlaying(true)).catch(() => {});
-      }
     };
 
-    // Handle pause - only mark manual pauses
     const handlePause = () => {
       setPlaying(false);
-      // Don't clear wasPlayingBeforeBufferRef if we're loading (buffering pause)
-      // Only clear it for user-initiated pauses
-      if (!isLoading && video.readyState >= 3) {
-        wasPlayingBeforeBufferRef.current = false;
-      }
-    };
-
-    // Handle suspend (browser may pause to save resources)
-    const handleSuspend = () => {
-      if (!video.paused && video.currentTime > 0) {
-        wasPlayingBeforeBufferRef.current = true;
-        lastKnownTimeRef.current = video.currentTime;
-      }
     };
 
     video.addEventListener('timeupdate', handleTimeUpdate);
@@ -312,7 +270,6 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
     video.addEventListener('stalled', handleStalled);
     video.addEventListener('seeked', handleSeeked);
     video.addEventListener('pause', handlePause);
-    video.addEventListener('suspend', handleSuspend);
 
     return () => {
       video.removeEventListener('timeupdate', handleTimeUpdate);
@@ -325,9 +282,8 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
       video.removeEventListener('stalled', handleStalled);
       video.removeEventListener('seeked', handleSeeked);
       video.removeEventListener('pause', handlePause);
-      video.removeEventListener('suspend', handleSuspend);
     };
-  }, [onProgress, initialTime, volume, isHlsStream, isLoading]);
+  }, [onProgress, initialTime, volume, isHlsStream]);
 
   // Track fullscreen changes
   useEffect(() => {
