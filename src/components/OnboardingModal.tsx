@@ -1,22 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Waves, User, Anchor, Sparkles, Lock, Eye, EyeOff } from 'lucide-react';
+import { Waves, User, Anchor, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import logo from '@/assets/logo.png';
 
 interface OnboardingModalProps {
-  onComplete: (name: string, password: string) => Promise<any>;
-  mode?: 'register' | 'login';
-  existingUserName?: string;
-  onSwitchMode?: () => void;
+  onComplete: (name: string) => Promise<any>;
 }
 
-export function OnboardingModal({ onComplete, mode = 'register', existingUserName, onSwitchMode }: OnboardingModalProps) {
-  const [name, setName] = useState(existingUserName || '');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+export function OnboardingModal({ onComplete }: OnboardingModalProps) {
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,26 +21,11 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
       return;
     }
     
-    if (!password.trim()) {
-      setError('Please enter a password');
-      return;
-    }
-
-    if (password.length < 4) {
-      setError('Password must be at least 4 characters');
-      return;
-    }
-
-    if (mode === 'register' && password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-    
     setLoading(true);
     setError('');
     
     try {
-      await onComplete(name, password);
+      await onComplete(name);
     } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
       setLoading(false);
@@ -128,7 +107,7 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
             className="text-muted-foreground flex items-center gap-2"
           >
             <Sparkles className="w-4 h-4 text-primary" />
-            {mode === 'login' ? 'Login or create a new account' : 'Create your account to get started'}
+            Enter your name to get started
           </motion.p>
         </div>
 
@@ -149,59 +128,10 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
-                autoFocus={mode !== 'login'}
+                autoFocus
               />
             </div>
           </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.55, duration: 0.5 }}
-          >
-            <label className="block text-sm font-medium mb-2 text-foreground/80">
-              Password
-            </label>
-            <div className="relative group">
-              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
-              <Input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-12 pr-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
-            </div>
-          </motion.div>
-
-          {mode === 'register' && (
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-            >
-              <label className="block text-sm font-medium mb-2 text-foreground/80">
-                Confirm Password
-              </label>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors duration-300" />
-                <Input
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-12 bg-secondary/50 border-white/10 focus:border-primary h-12 rounded-xl text-base"
-                />
-              </div>
-            </motion.div>
-          )}
 
           <AnimatePresence>
             {error && (
@@ -242,7 +172,7 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
                     transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
                   />
                   <Anchor className="w-5 h-5 mr-2 relative z-10" />
-                  <span className="relative z-10">{mode === 'login' ? 'Login / Create Account' : 'Create Account'}</span>
+                  <span className="relative z-10">Start Learning</span>
                 </>
               )}
             </Button>
@@ -256,29 +186,8 @@ export function OnboardingModal({ onComplete, mode = 'register', existingUserNam
           transition={{ delay: 0.7, duration: 0.5 }}
           className="relative z-10 text-xs text-muted-foreground text-center mt-4"
         >
-          {mode === 'login' 
-            ? "Enter your credentials. New users will be automatically registered."
-            : "Create an account to track your progress across devices."
-          }
+          Your progress is saved automatically to this device.
         </motion.p>
-
-        {onSwitchMode && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.72, duration: 0.5 }}
-            className="relative z-10 text-sm text-muted-foreground text-center mt-2"
-          >
-            {mode === 'login' ? "Want to register manually? " : "Already have an account? "}
-            <button
-              type="button"
-              onClick={onSwitchMode}
-              className="text-primary hover:underline font-medium"
-            >
-              {mode === 'login' ? 'Switch to Register' : 'Login'}
-            </button>
-          </motion.p>
-        )}
 
         <motion.p
           initial={{ opacity: 0 }}

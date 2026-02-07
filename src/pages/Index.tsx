@@ -37,7 +37,7 @@ const itemVariants = {
 type ViewFilter = 'all' | 'favorites';
 
 const Index = () => {
-  const { user, loading: userLoading, needsOnboarding, createUser, authMode, switchAuthMode } = useUser();
+  const { user, loading: userLoading, needsOnboarding, createUser } = useUser();
   const { data: batches, isLoading: batchesLoading } = useBatches();
   const { data: favorites } = useFavorites();
   const { data: batchProgressMap } = useBatchProgress(batches);
@@ -82,7 +82,7 @@ const Index = () => {
   }
 
   if (needsOnboarding) {
-    return <OnboardingModal onComplete={createUser} mode={authMode} onSwitchMode={switchAuthMode} />;
+    return <OnboardingModal onComplete={createUser} />;
   }
 
   return (
