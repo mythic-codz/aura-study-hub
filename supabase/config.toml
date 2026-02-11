@@ -1,1 +1,7 @@
 project_id = "btugouoehaqhjrzsstnz"
+
+[functions.check-ban]
+verify_jwt = false
+
+[functions.report-violation]
+verify_jwt = false
