@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_devices: {
+        Row: {
+          banned_until: string | null
+          created_at: string
+          device_id: string
+          id: string
+          ip_address: string | null
+          updated_at: string
+          violation_count: number
+        }
+        Insert: {
+          banned_until?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+          ip_address?: string | null
+          updated_at?: string
+          violation_count?: number
+        }
+        Update: {
+          banned_until?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          ip_address?: string | null
+          updated_at?: string
+          violation_count?: number
+        }
+        Relationships: []
+      }
       batches: {
         Row: {
           batch_name: string | null

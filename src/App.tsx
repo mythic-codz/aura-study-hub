@@ -10,7 +10,9 @@ import PlayPage from "./pages/PlayPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import AchievementsPage from "./pages/AchievementsPage";
+import BlockedPage from "./pages/BlockedPage";
 import NotFound from "./pages/NotFound";
+import { SecurityProvider } from "./components/SecurityProvider";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,7 @@ function AnimatedRoutes() {
         variants={pageVariants}
       >
         <Routes location={location}>
+          <Route path="/blocked" element={<BlockedPage />} />
           <Route path="/" element={<Index />} />
           <Route path="/batch/:batchId" element={<BatchPage />} />
           <Route path="/play/:batchId/:type/:index" element={<PlayPage />} />
@@ -70,7 +73,9 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AnimatedRoutes />
+        <SecurityProvider>
+          <AnimatedRoutes />
+        </SecurityProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
