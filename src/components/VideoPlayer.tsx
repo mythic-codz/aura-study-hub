@@ -1,10 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, Check, Loader2
 } from 'lucide-react';
+import { getOrCreateDeviceId } from '@/lib/deviceId';
 import { Slider } from '@/components/ui/slider';
 import {
   DropdownMenu,
