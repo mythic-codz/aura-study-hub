@@ -36,7 +36,7 @@ function getStoredVolume(): number {
 }
 
 export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPlayerProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const [playing, setPlaying] = useState(false);
