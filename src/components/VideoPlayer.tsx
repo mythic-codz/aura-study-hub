@@ -1,10 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Hls from 'hls.js';
 import { 
   Play, Pause, Volume2, VolumeX, Maximize, Minimize,
   SkipBack, SkipForward, Check, Loader2
 } from 'lucide-react';
+import { getOrCreateDeviceId } from '@/lib/deviceId';
 import { Slider } from '@/components/ui/slider';
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ function getStoredVolume(): number {
 }
 
 export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPlayerProps) {
+  const deviceId = useMemo(() => getOrCreateDeviceId(), []);
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -446,6 +448,30 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         onClick={togglePlay}
         playsInline
       />
+
+      {/* Watermark overlay - multiple positions to prevent cropping */}
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden" style={{ zIndex: 10 }}>
+        {/* Top-left */}
+        <span className="absolute top-[12%] left-[8%] text-white/[0.08] text-xs sm:text-sm font-mono rotate-[-20deg] whitespace-nowrap">
+          {deviceId}
+        </span>
+        {/* Center */}
+        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/[0.06] text-sm sm:text-lg font-mono rotate-[-30deg] whitespace-nowrap">
+          {deviceId}
+        </span>
+        {/* Bottom-right */}
+        <span className="absolute bottom-[18%] right-[6%] text-white/[0.08] text-xs sm:text-sm font-mono rotate-[15deg] whitespace-nowrap">
+          {deviceId}
+        </span>
+        {/* Top-right */}
+        <span className="absolute top-[30%] right-[12%] text-white/[0.05] text-xs font-mono rotate-[-10deg] whitespace-nowrap">
+          {deviceId}
+        </span>
+        {/* Bottom-left */}
+        <span className="absolute bottom-[35%] left-[15%] text-white/[0.05] text-xs font-mono rotate-[25deg] whitespace-nowrap">
+          {deviceId}
+        </span>
+      </div>
 
       {/* Loading spinner */}
       {isLoading && (
