@@ -110,7 +110,7 @@ export function Header() {
           {user && (
             <>
               <StreakBadge />
-                whileHover={{ scale: 1.05, y: -1 }}
+              <motion.div
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                 className="xp-badge text-xs sm:text-sm cursor-pointer"
