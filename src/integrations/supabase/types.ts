@@ -137,6 +137,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          batch_id: string
+          content_index: number
+          content_type: string
+          created_at: string
+          id: string
+          is_bookmark: boolean
+          text: string
+          timestamp_pos: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_id: string
+          content_index: number
+          content_type: string
+          created_at?: string
+          id?: string
+          is_bookmark?: boolean
+          text?: string
+          timestamp_pos?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_id?: string
+          content_index?: number
+          content_type?: string
+          created_at?: string
+          id?: string
+          is_bookmark?: boolean
+          text?: string
+          timestamp_pos?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       progress: {
         Row: {
           batch_id: string
@@ -197,6 +236,98 @@ export type Database = {
           },
         ]
       }
+      quiz_attempts: {
+        Row: {
+          answers: Json
+          created_at: string
+          id: string
+          quiz_id: string
+          score: number
+          total_questions: number
+          user_id: string
+          xp_earned: number
+        }
+        Insert: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          quiz_id: string
+          score?: number
+          total_questions?: number
+          user_id: string
+          xp_earned?: number
+        }
+        Update: {
+          answers?: Json
+          created_at?: string
+          id?: string
+          quiz_id?: string
+          score?: number
+          total_questions?: number
+          user_id?: string
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_quiz_id_fkey"
+            columns: ["quiz_id"]
+            isOneToOne: false
+            referencedRelation: "quizzes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quizzes: {
+        Row: {
+          batch_id: string
+          content_index: number
+          content_type: string
+          created_at: string
+          id: string
+          questions: Json
+        }
+        Insert: {
+          batch_id: string
+          content_index: number
+          content_type: string
+          created_at?: string
+          id?: string
+          questions?: Json
+        }
+        Update: {
+          batch_id?: string
+          content_index?: number
+          content_type?: string
+          created_at?: string
+          id?: string
+          questions?: Json
+        }
+        Relationships: []
+      }
+      study_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          minutes_studied: number
+          study_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          minutes_studied?: number
+          study_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          minutes_studied?: number
+          study_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_id: string
@@ -244,9 +375,11 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          current_streak: number
           device_id: string
           id: string
           ip_address: string | null
+          longest_streak: number
           name: string
           password_hash: string | null
           updated_at: string
@@ -255,9 +388,11 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          current_streak?: number
           device_id: string
           id?: string
           ip_address?: string | null
+          longest_streak?: number
           name: string
           password_hash?: string | null
           updated_at?: string
@@ -266,9 +401,11 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          current_streak?: number
           device_id?: string
           id?: string
           ip_address?: string | null
+          longest_streak?: number
           name?: string
           password_hash?: string | null
           updated_at?: string

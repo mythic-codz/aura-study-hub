@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { StreakBadge } from '@/components/StreakBadge';
 import logo from '@/assets/logo.png';
 
 export function Header() {
@@ -108,8 +109,8 @@ export function Header() {
         <div className="flex items-center gap-3">
           {user && (
             <>
-              <motion.div 
-                whileHover={{ scale: 1.05, y: -1 }}
+              <StreakBadge />
+              <motion.div
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 17 }}
                 className="xp-badge text-xs sm:text-sm cursor-pointer"
