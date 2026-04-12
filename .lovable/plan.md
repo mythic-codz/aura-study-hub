@@ -1,117 +1,105 @@
 
 
-## Comprehensive Anti-Scraping and DevTools Protection System
+## Content & Learning Features -- Implementation Plan
 
-### Honest Reality Check
+This is a large scope (13 features). Based on your priority choice, we'll build **Content & Learning first** (features 1-4), then proceed to the remaining groups in follow-up rounds.
 
-No client-side protection can **fully** stop a determined developer -- the browser must receive the code to render it. However, this plan implements **every practical layer** to make it extremely difficult, annoying, and risky for 99% of users. The combination of client-side deterrents + server-side enforcement + persistent banning creates a strong defense-in-depth system.
-
-### What Will Be Built
-
-**Layer 1: Immediate Client-Side Protections (before React loads)**
-- Inline script in `index.html` that blocks keyboard shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U), disables right-click, and prevents text selection
-- This runs before any JS framework loads, so it catches early attempts
-
-**Layer 2: DevTools Detection Engine**
-- Multiple detection methods running in parallel:
-  - Window outer/inner size difference detection
-  - `debugger` statement timing attack (if debugger pauses, timing exceeds threshold)
-  - Console log object trick (overriding toString/getter to detect when console evaluates objects)
-  - `performance.now()` timing checks
-- Runs on a continuous interval (every 1-2 seconds)
-
-**Layer 3: Progressive Ban System (Server-Side)**
-- New `banned_devices` database table storing device_id, IP address, violation count, and ban expiry
-- **Edge Function: `check-ban`** -- called on every app load to verify if the device/IP is banned
-- **Edge Function: `report-violation`** -- called when DevTools are detected; increments violations and calculates ban duration:
-  - 1st offense: 1 day
-  - 2nd offense: 1 week
-  - 3rd offense: 1 month
-  - 4th offense: 3 months
-  - 5th+ offense: 1 year
-- Bans by BOTH device ID AND IP address, so clearing cache/cookies does not help
-- IP is resolved server-side (not client-side) so it cannot be faked
-
-**Layer 4: Security Provider Component**
-- Wraps the entire app in `SecurityProvider`
-- On mount: calls `check-ban` edge function with device_id
-- If banned: redirects to `/blocked` (Pirate page) with no way to navigate away
-- Starts DevTools detection loop; on detection, calls `report-violation` and redirects
-
-**Layer 5: Pirate/Blocked Page**
-- Full-screen blocked page showing a skull/pirate icon
-- Displays the violation count and remaining ban time
-- Cannot be navigated away from (all routes redirect back)
-- Also blocks keyboard shortcuts on this page
-
-**Layer 6: Source Code Obfuscation**
-- CSS to disable user-select on the body
-- Disable drag events on images/media
+### Phase 1: Content & Learning (This Implementation)
 
 ---
 
-### Technical Details
+### Feature 1: AI-Powered Quiz System
 
-#### New Database Migration
-```sql
-CREATE TABLE banned_devices (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  device_id text NOT NULL,
-  ip_address text,
-  violation_count integer DEFAULT 0,
-  banned_until timestamptz,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
+**How it works**: An edge function analyzes each lecture's PDF content (or video title/description) using Lovable AI to auto-generate quiz questions. Quizzes appear after completing a video/PDF.
 
-ALTER TABLE banned_devices ENABLE ROW LEVEL SECURITY;
+**Database changes**:
+- New `quizzes` table: `id`, `batch_id`, `content_type`, `content_index`, `questions` (JSONB -- array of `{question, options[], correct_answer, explanation}`), `created_at`
+- New `quiz_attempts` table: `id`, `user_id`, `quiz_id`, `score`, `answers` (JSONB), `xp_earned`, `created_at`
 
--- Allow edge functions (service role) full access
--- Public can only read their own ban status
-CREATE POLICY "Anyone can check bans"
-  ON banned_devices FOR SELECT
-  USING (true);
-```
+**New edge function**: `generate-quiz`
+- Accepts `{ batch_id, content_type, content_index, pdf_url?, title? }`
+- Fetches the PDF content, sends it to Lovable AI with a prompt to generate 5 multiple-choice questions
+- Uses tool calling for structured output (question, 4 options, correct answer, explanation)
+- Stores generated quiz in the `quizzes` table
+- Falls back to title-based questions if PDF fetch fails
 
-#### New Edge Function: `check-ban`
-- Accepts POST with `{ device_id }`
-- Extracts client IP from request headers server-side
-- Queries `banned_devices` for matching device_id OR ip_address
-- Returns `{ banned, banned_until, violation_count }`
+**New components**:
+- `QuizModal.tsx` -- Shows after content completion, displays questions one at a time with animated transitions
+- `QuizResults.tsx` -- Score summary with XP earned (2 XP per correct answer, max 10 XP per quiz)
 
-#### New Edge Function: `report-violation`
-- Accepts POST with `{ device_id }`
-- Gets IP server-side from request headers
-- Upserts into `banned_devices`: increments violation_count, calculates new ban duration
-- Returns updated ban info
+**New hook**: `useQuiz.ts` -- fetch/generate quiz, submit attempt
 
-#### New Files
-| File | Purpose |
-|------|---------|
-| `src/lib/devtoolsDetection.ts` | Multi-method DevTools detection engine |
-| `src/lib/securityGuard.ts` | Keyboard shortcut blocking, right-click disable, text selection disable |
-| `src/components/SecurityProvider.tsx` | App wrapper: ban check on mount, continuous detection, violation reporting |
-| `src/pages/BlockedPage.tsx` | Pirate/blocked page with ban timer |
-| `supabase/functions/check-ban/index.ts` | Edge function to check ban status |
-| `supabase/functions/report-violation/index.ts` | Edge function to record violations and escalate bans |
+---
 
-#### Modified Files
-| File | Change |
-|------|--------|
-| `index.html` | Add inline security script (shortcut blocking before React loads) |
-| `src/App.tsx` | Wrap routes with `SecurityProvider`, add `/blocked` route |
-| `supabase/config.toml` | Add function configs with `verify_jwt = false` |
+### Feature 2: Notes & Bookmarks
 
-### What This Stops
-- Casual users pressing F12 or right-clicking
-- Users trying to view source with Ctrl+U
-- Users opening DevTools from browser menu (detected via size/timing)
-- Users clearing cache to bypass ban (IP-based ban persists)
-- Users switching browsers on same device (device ID persists via IP fallback)
-- Automated scraping tools (rate-limited + ban system)
+**Database changes**:
+- New `notes` table: `id`, `user_id`, `batch_id`, `content_type`, `content_index`, `timestamp` (seconds for video, page for PDF), `text`, `created_at`
 
-### What This Cannot Stop
-- VPN + fresh browser + disabling JavaScript (but site won't work without JS)
-- Network-level packet inspection (would need DRM/encrypted streams for video)
-- Extremely determined reverse engineers (no client-side solution can)
+**UI changes**:
+- Add a notes panel (slide-out drawer) on the `PlayPage`
+- "Add Note" button on the video player that captures current timestamp
+- Notes list sorted by timestamp, clicking a note seeks to that position
+- Bookmark icon on each note for quick access
+
+**New hook**: `useNotes.ts` -- CRUD operations for notes
+
+---
+
+### Feature 3: Study Streaks
+
+**Database changes**:
+- New `study_sessions` table: `id`, `user_id`, `date` (date only, unique per user+date), `minutes_studied`, `created_at`
+- Add `current_streak` and `longest_streak` columns to `users` table
+
+**Logic**:
+- When a user watches a video or reads a PDF, record a session for today
+- On each session check, calculate current streak (consecutive days)
+- XP multiplier: 1x base, +10% per streak day (capped at 2x at 10-day streak)
+- Show streak badge in header and profile page
+
+**New components**:
+- `StreakBadge.tsx` -- flame icon with streak count, shown in header
+- Streak section on profile page with calendar visualization
+
+**New hook**: `useStreak.ts`
+
+---
+
+### Feature 4: Content Search
+
+**Implementation**: Client-side full-text search across batch names, video titles, and PDF titles (data is already loaded).
+
+**UI changes**:
+- Enhanced search bar on Index page (already exists but basic)
+- Search results page/dropdown showing matched content grouped by batch
+- Clicking a result navigates directly to the play page
+
+**No database changes needed** -- searches the already-fetched batch data.
+
+---
+
+### Future Phases (not built now)
+
+| Phase | Features |
+|-------|----------|
+| Phase 2: Gamification | Daily challenges, level system, achievement milestones |
+| Phase 3: Social | Discussion forum, study groups, referral system |
+| Phase 4: Admin | Admin dashboard, content analytics, push notifications |
+
+These will be planned and built after Phase 1 is complete.
+
+---
+
+### Technical Summary
+
+| Item | Type |
+|------|------|
+| New DB tables | `quizzes`, `quiz_attempts`, `notes`, `study_sessions` |
+| Modified DB tables | `users` (add streak columns) |
+| New edge functions | `generate-quiz` (uses Lovable AI) |
+| New pages | None (modal-based quiz, drawer-based notes) |
+| New components | `QuizModal`, `QuizResults`, `StreakBadge`, notes drawer |
+| New hooks | `useQuiz`, `useNotes`, `useStreak` |
+| Modified files | `PlayPage.tsx`, `Header.tsx`, `ProfilePage.tsx`, `Index.tsx`, `VideoPlayer.tsx` |
 
