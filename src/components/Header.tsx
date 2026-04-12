@@ -109,7 +109,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           {user && (
             <>
-              <motion.div 
+              <StreakBadge />
                 whileHover={{ scale: 1.05, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 17 }}
