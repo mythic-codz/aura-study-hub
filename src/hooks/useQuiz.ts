@@ -42,7 +42,7 @@ export function useQuiz(batchId: string, contentType: string, contentIndex: numb
         .maybeSingle();
 
       if (error) throw error;
-      return data as Quiz | null;
+      return data as unknown as Quiz | null;
     },
     enabled: !!batchId,
   });

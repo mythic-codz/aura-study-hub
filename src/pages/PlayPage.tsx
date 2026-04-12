@@ -1,11 +1,18 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, StickyNote, Brain } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { PDFViewer } from '@/components/PDFViewer';
+import { QuizModal } from '@/components/QuizModal';
+import { NotesDrawer } from '@/components/NotesDrawer';
+import { Button } from '@/components/ui/button';
 import { useBatch, VideoItem, PdfItem } from '@/hooks/useBatches';
 import { useProgress, useUpdateProgress } from '@/hooks/useProgress';
+import { useQuiz, useGenerateQuiz, useSubmitQuizAttempt, useQuizAttempts } from '@/hooks/useQuiz';
+import { useNotes } from '@/hooks/useNotes';
+import { useRecordStudySession } from '@/hooks/useStreak';
+import { toast } from 'sonner';
 
 export default function PlayPage() {
   const { batchId, type, index } = useParams<{ batchId: string; type: 'video' | 'pdf'; index: string }>();
@@ -13,11 +20,32 @@ export default function PlayPage() {
   const { data: progressData } = useProgress(batchId);
   const updateProgress = useUpdateProgress();
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [currentTimestamp, setCurrentTimestamp] = useState(0);
+  const [showNotes, setShowNotes] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizTriggered, setQuizTriggered] = useState(false);
+  const videoSeekRef = useRef<((time: number) => void) | null>(null);
 
   const contentIndex = parseInt(index || '0', 10);
 
+  // Hooks (always called)
+  const { data: quiz } = useQuiz(batchId || '', type || '', contentIndex);
+  const generateQuiz = useGenerateQuiz();
+  const submitAttempt = useSubmitQuizAttempt();
+  const { data: attempts } = useQuizAttempts(quiz?.id);
+  const { data: notes } = useNotes(batchId || '', type || '', contentIndex);
+  const recordSession = useRecordStudySession();
+
+  // Record study session on mount
+  const sessionRecorded = useRef(false);
+  useEffect(() => {
+    if (!sessionRecorded.current) {
+      sessionRecorded.current = true;
+      recordSession.mutate();
+    }
+  }, []);
+
   // Build flat list of content from structured_data OR legacy arrays
-  // This ensures consistent indexing between BatchPage and PlayPage
   const { allVideos, allPdfs } = useMemo(() => {
     if (batch?.structured_data?.subjects && batch.structured_data.subjects.length > 0) {
       const videos: VideoItem[] = [];
@@ -25,39 +53,86 @@ export default function PlayPage() {
       
       batch.structured_data.subjects.forEach((subject) => {
         subject.topics.forEach((topic) => {
-          topic.videos.forEach((video) => {
-            videos.push(video);
-          });
-          topic.pdfs.forEach((pdf) => {
-            pdfs.push(pdf);
-          });
+          topic.videos.forEach((video) => videos.push(video));
+          topic.pdfs.forEach((pdf) => pdfs.push(pdf));
         });
       });
       
       return { allVideos: videos, allPdfs: pdfs };
     }
-    
-    // Legacy: use flat arrays
-    return { 
-      allVideos: batch?.videos || [], 
-      allPdfs: batch?.pdfs || [] 
-    };
+    return { allVideos: batch?.videos || [], allPdfs: batch?.pdfs || [] };
   }, [batch]);
 
-  // Get the content item based on type and index
   const content = useMemo(() => {
-    if (type === 'video') {
-      return allVideos[contentIndex];
-    } else {
-      return allPdfs[contentIndex];
-    }
+    return type === 'video' ? allVideos[contentIndex] : allPdfs[contentIndex];
   }, [type, contentIndex, allVideos, allPdfs]);
 
-  // Get initial position for resume playback
   const existingProgress = progressData?.find(
     p => p.content_type === type && p.content_index === contentIndex
   );
   const initialTime = existingProgress?.last_position || 0;
+
+  const hasAttempted = (attempts?.length || 0) > 0;
+
+  const handleProgress = useCallback((percent: number, currentTime?: number, duration?: number) => {
+    if (duration && duration > 0) setVideoDuration(duration);
+    if (currentTime !== undefined) setCurrentTimestamp(currentTime);
+
+    updateProgress.mutate({
+      batchId: batchId!,
+      contentType: type!,
+      contentIndex,
+      progressPercent: percent,
+      lastPosition: currentTime || 0,
+      videoDuration: duration || videoDuration,
+    });
+
+    // Trigger quiz when content is completed
+    if (percent >= 95 && !quizTriggered && !hasAttempted) {
+      setQuizTriggered(true);
+      // Auto-generate quiz if not exists
+      if (!quiz) {
+        generateQuiz.mutate({
+          batchId: batchId!,
+          contentType: type!,
+          contentIndex,
+          title: content?.title,
+          pdfUrl: type === 'pdf' ? content?.url : undefined,
+        }, {
+          onSuccess: () => setShowQuiz(true),
+          onError: () => toast.error('Failed to generate quiz'),
+        });
+      } else {
+        setShowQuiz(true);
+      }
+    }
+  }, [batchId, type, contentIndex, videoDuration, quizTriggered, hasAttempted, quiz, content]);
+
+  const handleQuizComplete = (answers: number[]) => {
+    if (!quiz) return;
+    submitAttempt.mutate({
+      quizId: quiz.id,
+      answers,
+      questions: quiz.questions,
+    });
+  };
+
+  const handleManualQuiz = () => {
+    if (quiz) {
+      setShowQuiz(true);
+    } else {
+      generateQuiz.mutate({
+        batchId: batchId!,
+        contentType: type!,
+        contentIndex,
+        title: content?.title,
+        pdfUrl: type === 'pdf' ? content?.url : undefined,
+      }, {
+        onSuccess: () => setShowQuiz(true),
+        onError: () => toast.error('Failed to generate quiz'),
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -78,29 +153,48 @@ export default function PlayPage() {
     );
   }
 
-  const handleProgress = (percent: number, currentTime?: number, duration?: number) => {
-    // Store duration for completion check
-    if (duration && duration > 0) {
-      setVideoDuration(duration);
-    }
-    
-    updateProgress.mutate({
-      batchId: batchId!,
-      contentType: type!,
-      contentIndex,
-      progressPercent: percent,
-      lastPosition: currentTime || 0,
-      videoDuration: duration || videoDuration,
-    });
-  };
-
   return (
     <div className="min-h-screen animated-bg">
       <Header />
       <main className="container mx-auto px-4 pt-20 sm:pt-24 pb-12">
-        <Link to={`/batch/${batchId}`} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-4 sm:mb-6 text-sm sm:text-base">
-          <ArrowLeft className="w-4 h-4" /> Back to {batch.name}
-        </Link>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <Link to={`/batch/${batchId}`} className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm sm:text-base">
+            <ArrowLeft className="w-4 h-4" /> Back to {batch.name}
+          </Link>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowNotes(true)}
+              className="gap-2"
+            >
+              <StickyNote className="w-4 h-4" />
+              <span className="hidden sm:inline">Notes</span>
+              {(notes?.length || 0) > 0 && (
+                <span className="text-xs bg-primary/20 text-primary px-1.5 py-0.5 rounded-full">
+                  {notes?.length}
+                </span>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualQuiz}
+              disabled={generateQuiz.isPending}
+              className="gap-2"
+            >
+              {generateQuiz.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Brain className="w-4 h-4" />
+              )}
+              <span className="hidden sm:inline">Quiz</span>
+              {hasAttempted && (
+                <span className="text-xs bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded-full">✓</span>
+              )}
+            </Button>
+          </div>
+        </div>
 
         {type === 'video' ? (
           <VideoPlayer 
@@ -113,6 +207,28 @@ export default function PlayPage() {
           <PDFViewer src={content.url} title={content.title} onProgress={handleProgress} />
         )}
       </main>
+
+      {/* Notes Drawer */}
+      <NotesDrawer
+        open={showNotes}
+        onClose={() => setShowNotes(false)}
+        notes={notes || []}
+        batchId={batchId!}
+        contentType={type!}
+        contentIndex={contentIndex}
+        currentTimestamp={currentTimestamp}
+        onSeek={(t) => videoSeekRef.current?.(t)}
+      />
+
+      {/* Quiz Modal */}
+      {showQuiz && quiz && (
+        <QuizModal
+          questions={quiz.questions}
+          onComplete={handleQuizComplete}
+          onClose={() => setShowQuiz(false)}
+          isSubmitting={submitAttempt.isPending}
+        />
+      )}
     </div>
   );
 }

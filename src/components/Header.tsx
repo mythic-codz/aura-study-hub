@@ -10,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { StreakBadge } from '@/components/StreakBadge';
 import logo from '@/assets/logo.png';
 
 export function Header() {

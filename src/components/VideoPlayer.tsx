@@ -50,7 +50,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   const [buffered, setBuffered] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const hideControlsTimer = useRef<NodeJS.Timeout>();
+  const hideControlsTimer = useRef<ReturnType<typeof setTimeout>>();
   const lastProgressReport = useRef(0);
 
   // Check if URL is an HLS stream
