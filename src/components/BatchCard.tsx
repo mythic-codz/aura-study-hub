@@ -87,6 +87,19 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
           alt={batch.name || 'Course thumbnail'}
           className="w-full h-full object-cover"
         />
+
+        {/* Live badge */}
+        {live && (
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+            </span>
+            Live
+          </div>
+        )}
+        
+
         
         {!compact && (
           <>
