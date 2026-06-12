@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { Batch } from '@/hooks/useBatches';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
+import { useBatchLive } from '@/hooks/useLiveClasses';
 import type { BatchProgress } from '@/hooks/useBatchProgress';
 import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
 import confetti from 'canvas-confetti';
