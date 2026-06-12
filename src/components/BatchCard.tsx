@@ -31,6 +31,7 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
   const isFavorite = favorites?.some(f => f.batch_id === batch.id) ?? false;
   const progressPercent = progress?.progressPercent ?? 0;
   const isComplete = progressPercent === 100;
+  const live = useBatchLive(batch.id);
 
   const triggerConfetti = useCallback(() => {
     if (!buttonRef.current) return;
