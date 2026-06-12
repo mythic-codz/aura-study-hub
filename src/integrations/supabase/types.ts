@@ -299,6 +299,42 @@ export type Database = {
         }
         Relationships: []
       }
+      live_classes: {
+        Row: {
+          batch_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          started_at: string
+          stream_url: string | null
+          thumbnail: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          stream_url?: string | null
+          thumbnail?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          stream_url?: string | null
+          thumbnail?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           batch_id: string
