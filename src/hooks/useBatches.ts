@@ -332,39 +332,133 @@ function parseLegacyStructuredData(obj: Record<string, Json>): StructuredData | 
   };
 }
 
+/**
+ * Map a row from the `batches` table into a normalized Batch.
+ */
+function mapBatchRow(batch: Record<string, Json> & { id: string }): Batch {
+  const structured = parseStructuredData(batch.structured_data ?? null);
+
+  let videos = parseVideos(batch.videos ?? null);
+  let pdfs = parsePdfs(batch.pdfs ?? null);
+
+  if (videos.length === 0 && pdfs.length === 0 && batch.data) {
+    const fromData = parseDataColumn(batch.data);
+    videos = fromData.videos;
+    pdfs = fromData.pdfs;
+  }
+
+  return {
+    id: batch.id,
+    name: (batch.name as string) ?? null,
+    thumbnail: (batch.thumbnail as string) ?? null,
+    data: batch.data ?? null,
+    updated_at: (batch.updated_at as string) ?? null,
+    videos,
+    pdfs,
+    structured_data: structured,
+  };
+}
+
+/**
+ * Derive a human-friendly course name for an extracted batch.
+ */
+function extractedName(row: Record<string, Json>): string {
+  const sources: Json[] = [];
+  if (Array.isArray(row.all_items)) sources.push(...(row.all_items as Json[]));
+  if (Array.isArray(row.videos)) sources.push(...(row.videos as Json[]));
+  if (Array.isArray(row.pdfs)) sources.push(...(row.pdfs as Json[]));
+  for (const item of sources) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const course = (item as Record<string, Json>).course;
+      if (typeof course === 'string' && course.trim()) return course;
+    }
+  }
+  return String(row.batch_name || row.batch_id || 'Untitled Course');
+}
+
+/**
+ * Build a Source -> Subject -> Topic structured_data object from the
+ * extracted_batches `structured` field: { Subject: { videos:[], pdfs:[] } }
+ */
+function buildExtractedStructured(structured: Json | null, batchName: string): Json | null {
+  if (!structured || typeof structured !== 'object' || Array.isArray(structured)) return null;
+  const subjects = structured as Record<string, Json>;
+  const inner: Record<string, Json> = {};
+
+  for (const subjectName of Object.keys(subjects)) {
+    const group = subjects[subjectName];
+    if (!group || typeof group !== 'object' || Array.isArray(group)) continue;
+    const g = group as Record<string, Json>;
+    const vids = Array.isArray(g.videos) ? (g.videos as Json[]) : [];
+    const pds = Array.isArray(g.pdfs) ? (g.pdfs as Json[]) : [];
+    const items = [...vids, ...pds].filter((i) => {
+      if (!i || typeof i !== 'object' || Array.isArray(i)) return false;
+      const it = i as Record<string, Json>;
+      const type = String(it.type || '').toLowerCase();
+      return !!it.title && !!it.url && (type === 'video' || type === 'pdf');
+    });
+    if (items.length > 0) inner[subjectName] = { Recorded: items as Json };
+  }
+
+  if (Object.keys(inner).length === 0) return null;
+  return { [batchName]: inner as Json } as Json;
+}
+
+/**
+ * Map a row from the `extracted_batches` table into a normalized Batch.
+ */
+function mapExtractedRow(row: Record<string, Json>): Batch {
+  const name = extractedName(row);
+  const structured = parseStructuredData(buildExtractedStructured(row.structured ?? null, name));
+  const videos = parseVideos(row.videos ?? null);
+  const pdfs = parsePdfs(row.pdfs ?? null);
+
+  return {
+    id: String(row.batch_id),
+    name,
+    thumbnail: null,
+    data: row.all_items ?? null,
+    updated_at: (row.extracted_at as string) ?? null,
+    videos,
+    pdfs,
+    structured_data: structured,
+  };
+}
+
 export function useBatches() {
   return useQuery({
     queryKey: ['batches'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('batches')
-        .select('*')
-        .order('updated_at', { ascending: false });
+      const [batchesRes, extractedRes] = await Promise.all([
+        supabase.from('batches').select('*').order('updated_at', { ascending: false }),
+        supabase.from('extracted_batches').select('*').order('extracted_at', { ascending: false }),
+      ]);
 
-      if (error) throw error;
-      
-      return (data || []).map(batch => {
-        // Try structured_data first
-        const structured = parseStructuredData(batch.structured_data);
-        
-        // Parse videos/pdfs columns
-        let videos = parseVideos(batch.videos);
-        let pdfs = parsePdfs(batch.pdfs);
-        
-        // If videos/pdfs are empty, try parsing from 'data' column
-        if (videos.length === 0 && pdfs.length === 0 && batch.data) {
-          const fromData = parseDataColumn(batch.data);
-          videos = fromData.videos;
-          pdfs = fromData.pdfs;
-        }
-        
-        return {
-          ...batch,
-          videos,
-          pdfs,
-          structured_data: structured,
-        };
-      }) as Batch[];
+      if (batchesRes.error) throw batchesRes.error;
+
+      const byId = new Map<string, Batch>();
+
+      (batchesRes.data || []).forEach((b) => {
+        const mapped = mapBatchRow(b as Record<string, Json> & { id: string });
+        byId.set(mapped.id, mapped);
+      });
+
+      // Extracted batches fill in any not already present
+      if (!extractedRes.error) {
+        (extractedRes.data || []).forEach((row) => {
+          const mapped = mapExtractedRow(row as Record<string, Json>);
+          if (!byId.has(mapped.id)) byId.set(mapped.id, mapped);
+        });
+      }
+
+      const all = Array.from(byId.values());
+      all.sort((a, b) => {
+        const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return tb - ta;
+      });
+
+      return all;
     },
   });
 }
@@ -380,28 +474,19 @@ export function useBatch(batchId: string) {
         .maybeSingle();
 
       if (error) throw error;
-      if (!data) return null;
-      
-      // Try structured_data first
-      const structured = parseStructuredData(data.structured_data);
-      
-      // Parse videos/pdfs columns
-      let videos = parseVideos(data.videos);
-      let pdfs = parsePdfs(data.pdfs);
-      
-      // If videos/pdfs are empty, try parsing from 'data' column
-      if (videos.length === 0 && pdfs.length === 0 && data.data) {
-        const fromData = parseDataColumn(data.data);
-        videos = fromData.videos;
-        pdfs = fromData.pdfs;
-      }
-      
-      return {
-        ...data,
-        videos,
-        pdfs,
-        structured_data: structured,
-      } as Batch;
+      if (data) return mapBatchRow(data as Record<string, Json> & { id: string });
+
+      // Fall back to extracted_batches
+      const { data: ex, error: exError } = await supabase
+        .from('extracted_batches')
+        .select('*')
+        .eq('batch_id', batchId)
+        .maybeSingle();
+
+      if (exError) throw exError;
+      if (!ex) return null;
+
+      return mapExtractedRow(ex as Record<string, Json>);
     },
     enabled: !!batchId,
   });

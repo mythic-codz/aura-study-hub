@@ -4,6 +4,7 @@ import { BookOpen, Search, X, Waves, Zap, Target, Heart } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { BatchCard } from '@/components/BatchCard';
+import { LiveBanner } from '@/components/LiveBanner';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { useUser } from '@/hooks/useUser';
@@ -90,6 +91,8 @@ const Index = () => {
       <Header />
       
       <main className="container mx-auto px-4 pt-24 pb-16">
+        <LiveBanner />
+
         {/* Hero Section */}
         <motion.section
           initial="hidden"

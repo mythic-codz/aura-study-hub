@@ -50,6 +50,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_log: {
+        Row: {
+          action: string
+          admin_id: number
+          created_at: string
+          details: string | null
+          id: string
+          target_user: number | null
+        }
+        Insert: {
+          action: string
+          admin_id: number
+          created_at?: string
+          details?: string | null
+          id?: string
+          target_user?: number | null
+        }
+        Update: {
+          action?: string
+          admin_id?: number
+          created_at?: string
+          details?: string | null
+          id?: string
+          target_user?: number | null
+        }
+        Relationships: []
+      }
       banned_devices: {
         Row: {
           banned_until: string | null
@@ -116,6 +143,141 @@ export type Database = {
         }
         Relationships: []
       }
+      bot_users: {
+        Row: {
+          daily_limit: number
+          extractions_today: number
+          full_name: string | null
+          id: number
+          is_admin: boolean
+          is_allowed: boolean
+          is_blocked: boolean
+          joined_at: string
+          last_reset_date: string | null
+          last_seen: string
+          notes: string | null
+          username: string | null
+        }
+        Insert: {
+          daily_limit?: number
+          extractions_today?: number
+          full_name?: string | null
+          id: number
+          is_admin?: boolean
+          is_allowed?: boolean
+          is_blocked?: boolean
+          joined_at?: string
+          last_reset_date?: string | null
+          last_seen?: string
+          notes?: string | null
+          username?: string | null
+        }
+        Update: {
+          daily_limit?: number
+          extractions_today?: number
+          full_name?: string | null
+          id?: number
+          is_admin?: boolean
+          is_allowed?: boolean
+          is_blocked?: boolean
+          joined_at?: string
+          last_reset_date?: string | null
+          last_seen?: string
+          notes?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
+      broadcasts: {
+        Row: {
+          id: string
+          message: string
+          recipient_count: number | null
+          sent_at: string
+          sent_by: number | null
+        }
+        Insert: {
+          id?: string
+          message: string
+          recipient_count?: number | null
+          sent_at?: string
+          sent_by?: number | null
+        }
+        Update: {
+          id?: string
+          message?: string
+          recipient_count?: number | null
+          sent_at?: string
+          sent_by?: number | null
+        }
+        Relationships: []
+      }
+      extracted_batches: {
+        Row: {
+          all_items: Json
+          batch_id: string
+          batch_name: string | null
+          dpps: Json
+          extracted_at: string
+          item_count: number
+          lives: Json
+          pdfs: Json
+          structured: Json
+          tests: Json
+          videos: Json
+        }
+        Insert: {
+          all_items?: Json
+          batch_id: string
+          batch_name?: string | null
+          dpps?: Json
+          extracted_at?: string
+          item_count?: number
+          lives?: Json
+          pdfs?: Json
+          structured?: Json
+          tests?: Json
+          videos?: Json
+        }
+        Update: {
+          all_items?: Json
+          batch_id?: string
+          batch_name?: string | null
+          dpps?: Json
+          extracted_at?: string
+          item_count?: number
+          lives?: Json
+          pdfs?: Json
+          structured?: Json
+          tests?: Json
+          videos?: Json
+        }
+        Relationships: []
+      }
+      extraction_log: {
+        Row: {
+          batch_id: string
+          extracted_at: string
+          id: string
+          item_count: number | null
+          user_id: number
+        }
+        Insert: {
+          batch_id: string
+          extracted_at?: string
+          id?: string
+          item_count?: number | null
+          user_id: number
+        }
+        Update: {
+          batch_id?: string
+          extracted_at?: string
+          id?: string
+          item_count?: number | null
+          user_id?: number
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           batch_id: string
@@ -134,6 +296,42 @@ export type Database = {
           created_at?: string
           id?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      live_classes: {
+        Row: {
+          batch_id: string
+          created_at: string
+          ended_at: string | null
+          id: string
+          started_at: string
+          stream_url: string | null
+          thumbnail: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          batch_id: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          stream_url?: string | null
+          thumbnail?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          batch_id?: string
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          started_at?: string
+          stream_url?: string | null
+          thumbnail?: string | null
+          title?: string
+          updated_at?: string
         }
         Relationships: []
       }

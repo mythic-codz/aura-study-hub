@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { Batch } from '@/hooks/useBatches';
 import { useFavorites, useToggleFavorite } from '@/hooks/useFavorites';
+import { useBatchLive } from '@/hooks/useLiveClasses';
 import type { BatchProgress } from '@/hooks/useBatchProgress';
 import defaultThumbnail from '@/assets/default-batch-thumbnail.jpg';
 import confetti from 'canvas-confetti';
@@ -30,6 +31,7 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
   const isFavorite = favorites?.some(f => f.batch_id === batch.id) ?? false;
   const progressPercent = progress?.progressPercent ?? 0;
   const isComplete = progressPercent === 100;
+  const live = useBatchLive(batch.id);
 
   const triggerConfetti = useCallback(() => {
     if (!buttonRef.current) return;
@@ -85,6 +87,19 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
           alt={batch.name || 'Course thumbnail'}
           className="w-full h-full object-cover"
         />
+
+        {/* Live badge */}
+        {live && (
+          <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider shadow-lg">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+            </span>
+            Live
+          </div>
+        )}
+        
+
         
         {!compact && (
           <>
