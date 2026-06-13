@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import Index from "./pages/Index";
 import BatchPage from "./pages/BatchPage";
 import PlayPage from "./pages/PlayPage";
+import LivePage from "./pages/LivePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import AchievementsPage from "./pages/AchievementsPage";
@@ -57,6 +58,7 @@ function AnimatedRoutes() {
           <Route path="/" element={<Index />} />
           <Route path="/batch/:batchId" element={<BatchPage />} />
           <Route path="/play/:batchId/:type/:index" element={<PlayPage />} />
+          <Route path="/live/:batchId" element={<LivePage />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/achievements" element={<AchievementsPage />} />
