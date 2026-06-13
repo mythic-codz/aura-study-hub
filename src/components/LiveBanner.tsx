@@ -58,7 +58,7 @@ export function LiveBanner() {
             exit={{ opacity: 0, y: -10 }}
           >
             <Link
-              to={`/batch/${live.batch_id}`}
+              to={`/live/${live.batch_id}`}
               className="glass-card flex items-center gap-4 p-4 rounded-2xl border border-red-500/30 hover:border-red-500/50 transition-colors group"
             >
               <span className="relative flex h-3 w-3 flex-shrink-0">
