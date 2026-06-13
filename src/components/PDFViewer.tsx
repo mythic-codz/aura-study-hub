@@ -1,8 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { Download, FileText, Loader2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/hooks/useUser';
+import { proxyUrl } from '@/lib/contentProxy';
 
 interface PDFViewerProps {
   src: string;
@@ -17,12 +18,15 @@ export function PDFViewer({ src, title, onProgress }: PDFViewerProps) {
   const [totalPages] = useState(1); // In a real implementation, get from PDF
   const [zoom, setZoom] = useState(100);
 
+  // Serve the PDF through the secure content proxy (hides the source URL)
+  const proxiedSrc = useMemo(() => proxyUrl(src), [src]);
+
   const handleDownload = useCallback(async () => {
     setDownloading(true);
     
     try {
-      // Fetch the PDF
-      const response = await fetch(src);
+      // Fetch the PDF (via proxy to avoid CORS / hide source)
+      const response = await fetch(proxiedSrc);
       const blob = await response.blob();
       
       // Create branded filename
@@ -115,7 +119,7 @@ export function PDFViewer({ src, title, onProgress }: PDFViewerProps) {
 
           {/* PDF embed */}
           <iframe
-            src={`${src}#toolbar=0&navpanes=0&scrollbar=0`}
+            src={`${proxiedSrc}#toolbar=0&navpanes=0&scrollbar=0`}
             className="w-full h-[70vh] border-0"
             title={title}
           />

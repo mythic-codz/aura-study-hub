@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, FileText, Loader2, Video, BookOpen, CheckCircle2, ChevronRight, Layers, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Play, FileText, Loader2, Video, BookOpen, CheckCircle2, ChevronRight, Layers, FolderOpen, Brain } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { useBatch, Subject, Topic, ContentItem, VideoItem, PdfItem } from '@/hooks/useBatches';
 import { useProgress } from '@/hooks/useProgress';
@@ -532,6 +532,44 @@ export default function BatchPage() {
                       );
                     })}
                   </div>
+                </section>
+              )}
+
+              {/* Quiz item — take an AI quiz on this topic's content */}
+              {(currentTopicContent.videos.length > 0 || currentTopicContent.pdfs.length > 0) && (
+                <section className="mt-8">
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Brain className="w-5 h-5 text-purple-400" /> Quiz
+                  </h2>
+                  {(() => {
+                    const first = currentTopicContent.videos[0]
+                      ? { type: 'video', index: currentTopicContent.videos[0].globalIndex }
+                      : { type: 'pdf', index: currentTopicContent.pdfs[0].globalIndex };
+                    return (
+                      <Link to={`/play/${batchId}/${first.type}/${first.index}?quiz=1`}>
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="glass-card-hover p-3 sm:p-4"
+                        >
+                          <div className="flex items-center gap-3 sm:gap-4">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-purple-500 to-primary">
+                              <Brain className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium text-sm sm:text-base line-clamp-1">
+                                Take Quiz — {selectedTopic.name}
+                              </span>
+                              <p className="text-xs text-muted-foreground">
+                                Test what you learned with an AI-generated quiz
+                              </p>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                          </div>
+                        </motion.div>
+                      </Link>
+                    );
+                  })()}
                 </section>
               )}
 

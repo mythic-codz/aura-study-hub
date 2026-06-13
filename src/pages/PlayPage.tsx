@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, StickyNote, Brain } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
@@ -23,7 +23,6 @@ export default function PlayPage() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  const [quizTriggered, setQuizTriggered] = useState(false);
   const videoSeekRef = useRef<((time: number) => void) | null>(null);
 
   const contentIndex = parseInt(index || '0', 10);
@@ -87,26 +86,7 @@ export default function PlayPage() {
       videoDuration: duration || videoDuration,
     });
 
-    // Trigger quiz when content is completed
-    if (percent >= 95 && !quizTriggered && !hasAttempted) {
-      setQuizTriggered(true);
-      // Auto-generate quiz if not exists
-      if (!quiz) {
-        generateQuiz.mutate({
-          batchId: batchId!,
-          contentType: type!,
-          contentIndex,
-          title: content?.title,
-          pdfUrl: type === 'pdf' ? content?.url : undefined,
-        }, {
-          onSuccess: () => setShowQuiz(true),
-          onError: () => toast.error('Failed to generate quiz'),
-        });
-      } else {
-        setShowQuiz(true);
-      }
-    }
-  }, [batchId, type, contentIndex, videoDuration, quizTriggered, hasAttempted, quiz, content]);
+  }, [batchId, type, contentIndex, videoDuration]);
 
   const handleQuizComplete = (answers: number[]) => {
     if (!quiz) return;
@@ -133,6 +113,16 @@ export default function PlayPage() {
       });
     }
   };
+
+  // Auto-open the quiz when arriving from a "Take Quiz" batch item (?quiz=1)
+  const [searchParams] = useSearchParams();
+  const quizAutoOpened = useRef(false);
+  useEffect(() => {
+    if (searchParams.get('quiz') === '1' && content && !quizAutoOpened.current) {
+      quizAutoOpened.current = true;
+      handleManualQuiz();
+    }
+  }, [searchParams, content]);
 
   if (isLoading) {
     return (

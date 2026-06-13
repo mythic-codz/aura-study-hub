@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { OnboardingModal } from '@/components/OnboardingModal';
 import { BatchCard } from '@/components/BatchCard';
 import { LiveBanner } from '@/components/LiveBanner';
+import { LiveNowSection } from '@/components/LiveNowSection';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { SkeletonCard } from '@/components/SkeletonCard';
 import { useUser } from '@/hooks/useUser';
@@ -92,6 +93,7 @@ const Index = () => {
       
       <main className="container mx-auto px-4 pt-24 pb-16">
         <LiveBanner />
+        <LiveNowSection />
 
         {/* Hero Section */}
         <motion.section

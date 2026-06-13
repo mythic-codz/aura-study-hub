@@ -6,6 +6,7 @@ import {
   SkipBack, SkipForward, Check, Loader2
 } from 'lucide-react';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { proxyUrl } from '@/lib/contentProxy';
 import { Slider } from '@/components/ui/slider';
 import {
   DropdownMenu,
@@ -56,6 +57,9 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
   // Check if URL is an HLS stream
   const isHlsStream = src?.includes('.m3u8');
 
+  // Route media through the secure content proxy (hides CDN URLs)
+  const proxiedSrc = useMemo(() => proxyUrl(src), [src]);
+
   // Track the last known position to restore after buffering
   const lastKnownTimeRef = useRef<number>(initialTime);
   const playbackRateRef = useRef<number>(1);
@@ -91,7 +95,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
           maxBufferHole: 0.5,
         });
         hlsRef.current = hls;
-        hls.loadSource(src);
+        hls.loadSource(proxiedSrc);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -151,11 +155,11 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
-        video.src = src;
+        video.src = proxiedSrc;
       }
     } else {
       // Regular video file
-      video.src = src;
+      video.src = proxiedSrc;
     }
 
     return () => {
