@@ -114,6 +114,16 @@ export default function PlayPage() {
     }
   };
 
+  // Auto-open the quiz when arriving from a "Take Quiz" batch item (?quiz=1)
+  const [searchParams] = useSearchParams();
+  const quizAutoOpened = useRef(false);
+  useEffect(() => {
+    if (searchParams.get('quiz') === '1' && content && !quizAutoOpened.current) {
+      quizAutoOpened.current = true;
+      handleManualQuiz();
+    }
+  }, [searchParams, content]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen animated-bg flex items-center justify-center">
