@@ -23,7 +23,6 @@ export default function PlayPage() {
   const [currentTimestamp, setCurrentTimestamp] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
-  const [quizTriggered, setQuizTriggered] = useState(false);
   const videoSeekRef = useRef<((time: number) => void) | null>(null);
 
   const contentIndex = parseInt(index || '0', 10);
