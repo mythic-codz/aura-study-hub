@@ -95,7 +95,7 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
           maxBufferHole: 0.5,
         });
         hlsRef.current = hls;
-        hls.loadSource(src);
+        hls.loadSource(proxiedSrc);
         hls.attachMedia(video);
 
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -155,11 +155,11 @@ export function VideoPlayer({ src, title, onProgress, initialTime = 0 }: VideoPl
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         // Native HLS support (Safari)
-        video.src = src;
+        video.src = proxiedSrc;
       }
     } else {
       // Regular video file
-      video.src = src;
+      video.src = proxiedSrc;
     }
 
     return () => {
