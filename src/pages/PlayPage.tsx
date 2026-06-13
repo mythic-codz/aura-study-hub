@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, StickyNote, Brain } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { VideoPlayer } from '@/components/VideoPlayer';
