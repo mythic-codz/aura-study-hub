@@ -25,8 +25,8 @@ export function PDFViewer({ src, title, onProgress }: PDFViewerProps) {
     setDownloading(true);
     
     try {
-      // Fetch the PDF
-      const response = await fetch(src);
+      // Fetch the PDF (via proxy to avoid CORS / hide source)
+      const response = await fetch(proxiedSrc);
       const blob = await response.blob();
       
       // Create branded filename
@@ -119,7 +119,7 @@ export function PDFViewer({ src, title, onProgress }: PDFViewerProps) {
 
           {/* PDF embed */}
           <iframe
-            src={`${src}#toolbar=0&navpanes=0&scrollbar=0`}
+            src={`${proxiedSrc}#toolbar=0&navpanes=0&scrollbar=0`}
             className="w-full h-[70vh] border-0"
             title={title}
           />
