@@ -87,26 +87,7 @@ export default function PlayPage() {
       videoDuration: duration || videoDuration,
     });
 
-    // Trigger quiz when content is completed
-    if (percent >= 95 && !quizTriggered && !hasAttempted) {
-      setQuizTriggered(true);
-      // Auto-generate quiz if not exists
-      if (!quiz) {
-        generateQuiz.mutate({
-          batchId: batchId!,
-          contentType: type!,
-          contentIndex,
-          title: content?.title,
-          pdfUrl: type === 'pdf' ? content?.url : undefined,
-        }, {
-          onSuccess: () => setShowQuiz(true),
-          onError: () => toast.error('Failed to generate quiz'),
-        });
-      } else {
-        setShowQuiz(true);
-      }
-    }
-  }, [batchId, type, contentIndex, videoDuration, quizTriggered, hasAttempted, quiz, content]);
+  }, [batchId, type, contentIndex, videoDuration]);
 
   const handleQuizComplete = (answers: number[]) => {
     if (!quiz) return;
