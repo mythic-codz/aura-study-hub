@@ -6,6 +6,7 @@ import {
   SkipBack, SkipForward, Check, Loader2
 } from 'lucide-react';
 import { getOrCreateDeviceId } from '@/lib/deviceId';
+import { proxyUrl } from '@/lib/contentProxy';
 import { Slider } from '@/components/ui/slider';
 import {
   DropdownMenu,
