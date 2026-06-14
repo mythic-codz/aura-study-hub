@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { device_id } = await req.json()
+    // Only allow a device to report a violation for ITSELF. Derive the
+    // device id from the request header, never from the request body, so a
+    // caller cannot ban arbitrary users by passing their device_id.
+    const device_id = req.headers.get('x-device-id')
 
     if (!device_id) {
       return new Response(JSON.stringify({ error: 'device_id required' }), {
