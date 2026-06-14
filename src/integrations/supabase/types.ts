@@ -446,6 +446,13 @@ export type Database = {
             foreignKeyName: "progress_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -581,6 +588,13 @@ export type Database = {
             foreignKeyName: "user_achievements_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
@@ -603,7 +617,6 @@ export type Database = {
           ip_address: string | null
           longest_streak: number
           name: string
-          password_hash: string | null
           updated_at: string
           xp: number
         }
@@ -616,7 +629,6 @@ export type Database = {
           ip_address?: string | null
           longest_streak?: number
           name: string
-          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
@@ -629,7 +641,6 @@ export type Database = {
           ip_address?: string | null
           longest_streak?: number
           name?: string
-          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
@@ -637,6 +648,36 @@ export type Database = {
       }
     }
     Views: {
+      public_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          current_streak: number | null
+          id: string | null
+          longest_streak: number | null
+          name: string | null
+          xp: number | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string | null
+          longest_streak?: number | null
+          name?: string | null
+          xp?: number | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          current_streak?: number | null
+          id?: string | null
+          longest_streak?: number | null
+          name?: string | null
+          xp?: number | null
+        }
+        Relationships: []
+      }
       users_public: {
         Row: {
           avatar_url: string | null
