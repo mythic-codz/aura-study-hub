@@ -404,19 +404,62 @@ function buildExtractedStructured(structured: Json | null, batchName: string): J
   return { [batchName]: inner as Json } as Json;
 }
 
+/** Flatten parsed structured_data into flat video/pdf arrays. */
+function flattenStructured(sd: StructuredData | null): { videos: VideoItem[]; pdfs: PdfItem[] } {
+  const videos: VideoItem[] = [];
+  const pdfs: PdfItem[] = [];
+  sd?.subjects.forEach((s) =>
+    s.topics.forEach((t) => {
+      videos.push(...t.videos);
+      pdfs.push(...t.pdfs);
+    })
+  );
+  return { videos, pdfs };
+}
+
+/** Pull a thumbnail from the first item that has one. */
+function findThumbnail(row: Record<string, Json>): string | null {
+  const sources: Json[] = [];
+  if (Array.isArray(row.all_items)) sources.push(...(row.all_items as Json[]));
+  if (Array.isArray(row.videos)) sources.push(...(row.videos as Json[]));
+  if (Array.isArray(row.pdfs)) sources.push(...(row.pdfs as Json[]));
+  for (const item of sources) {
+    if (item && typeof item === 'object' && !Array.isArray(item)) {
+      const thumb = (item as Record<string, Json>).thumbnail;
+      if (typeof thumb === 'string' && thumb.trim()) return thumb;
+    }
+  }
+  return null;
+}
+
 /**
  * Map a row from the `extracted_batches` table into a normalized Batch.
  */
 function mapExtractedRow(row: Record<string, Json>): Batch {
   const name = extractedName(row);
   const structured = parseStructuredData(buildExtractedStructured(row.structured ?? null, name));
-  const videos = parseVideos(row.videos ?? null);
-  const pdfs = parsePdfs(row.pdfs ?? null);
+
+  let videos = parseVideos(row.videos ?? null);
+  let pdfs = parsePdfs(row.pdfs ?? null);
+
+  // Top-level video/pdf columns are usually empty; derive from structured data.
+  if (videos.length === 0 && pdfs.length === 0) {
+    if (structured) {
+      const flat = flattenStructured(structured);
+      videos = flat.videos;
+      pdfs = flat.pdfs;
+    }
+    if (videos.length === 0 && pdfs.length === 0 && row.all_items) {
+      const fromData = parseDataColumn(row.all_items);
+      videos = fromData.videos;
+      pdfs = fromData.pdfs;
+    }
+  }
 
   return {
     id: String(row.batch_id),
     name,
-    thumbnail: null,
+    thumbnail: findThumbnail(row),
     data: row.all_items ?? null,
     updated_at: (row.extracted_at as string) ?? null,
     videos,
