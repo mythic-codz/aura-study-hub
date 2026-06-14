@@ -17,14 +17,38 @@ export default function BlockedPage() {
       if (stored) setInfo(JSON.parse(stored));
     } catch {}
 
-    // Block all shortcuts on this page too
+    // Try to force fullscreen on the blocked screen
+    const goFullscreen = () => {
+      const el = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => Promise<void>;
+        msRequestFullscreen?: () => Promise<void>;
+      };
+      try {
+        if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+      } catch {}
+    };
+    goFullscreen();
+    // Browsers require a user gesture; retry fullscreen on the first interaction
+    document.addEventListener('click', goFullscreen, { once: true });
+    document.addEventListener('keydown', goFullscreen, { once: true });
+
+    // Block F-keys, Windows/Meta key and Escape on this page
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'F12' || 
-          (e.ctrlKey && e.shiftKey) || 
-          (e.ctrlKey && (e.key === 'u' || e.key === 'U')) ||
-          (e.metaKey && e.altKey)) {
+      const isFKey = /^F\d{1,2}$/.test(e.key);
+      if (
+        isFKey ||
+        e.key === 'Meta' ||
+        e.key === 'OS' ||
+        e.key === 'Escape' ||
+        e.metaKey ||
+        (e.ctrlKey && e.shiftKey) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U'))
+      ) {
         e.preventDefault();
         e.stopPropagation();
+        return false;
       }
     };
     const ctxHandler = (e: MouseEvent) => { e.preventDefault(); };
@@ -35,6 +59,8 @@ export default function BlockedPage() {
     return () => {
       document.removeEventListener('keydown', handler, true);
       document.removeEventListener('contextmenu', ctxHandler, true);
+      document.removeEventListener('click', goFullscreen);
+      document.removeEventListener('keydown', goFullscreen);
     };
   }, []);
 
