@@ -114,6 +114,8 @@ export function BatchCard({ batch, index, progress, compact = false }: BatchCard
             <motion.button
               ref={buttonRef}
               onClick={handleFavoriteClick}
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               className="absolute top-3 left-3 p-2 rounded-xl bg-background/80 backdrop-blur-md border border-white/10 hover:bg-background/90 transition-colors overflow-visible"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
