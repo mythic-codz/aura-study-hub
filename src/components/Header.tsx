@@ -43,7 +43,7 @@ export function Header() {
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden ring-2 ring-primary/30 group-hover:ring-primary/60 transition-all duration-500 shadow-lg group-hover:shadow-primary/20">
               <img 
                 src={logo} 
-                alt="Study Ocean" 
+                alt="Utkarsh By Trms" 
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               />
             </div>
@@ -57,10 +57,10 @@ export function Header() {
               className="font-display font-bold text-lg gradient-text leading-tight"
               whileHover={{ scale: 1.02 }}
             >
-              Study Ocean
+              Utkarsh By Trms
             </motion.span>
             <span className="text-[10px] text-muted-foreground/70 font-medium tracking-wide">
-              Learn • Grow • Excel
+              Free Unlocked Batches • Learn • Excel
             </span>
           </div>
         </Link>
