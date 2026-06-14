@@ -23,6 +23,15 @@ function isBlockedHost(hostname: string): boolean {
   return false
 }
 
+// Only allow proxying from trusted content delivery hosts. This prevents the
+// proxy from being abused as an open HTTP proxy.
+const ALLOWED_HOST_SUFFIXES = ['cloudfront.net', 'akamaihd.net', 'akamaized.net']
+
+function isAllowedHost(hostname: string): boolean {
+  const h = hostname.toLowerCase()
+  return ALLOWED_HOST_SUFFIXES.some((s) => h === s || h.endsWith(`.${s}`))
+}
+
 function validate(raw: string | null): URL | null {
   if (!raw) return null
   let u: URL
@@ -33,6 +42,7 @@ function validate(raw: string | null): URL | null {
   }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return null
   if (isBlockedHost(u.hostname)) return null
+  if (!isAllowedHost(u.hostname)) return null
   return u
 }
 
