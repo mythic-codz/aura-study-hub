@@ -299,6 +299,30 @@ export type Database = {
         }
         Relationships: []
       }
+      known_batches: {
+        Row: {
+          added_at: string
+          batch_id: string
+          batch_name: string | null
+          category: string | null
+          is_active: boolean | null
+        }
+        Insert: {
+          added_at?: string
+          batch_id: string
+          batch_name?: string | null
+          category?: string | null
+          is_active?: boolean | null
+        }
+        Update: {
+          added_at?: string
+          batch_id?: string
+          batch_name?: string | null
+          category?: string | null
+          is_active?: boolean | null
+        }
+        Relationships: []
+      }
       live_classes: {
         Row: {
           batch_id: string
