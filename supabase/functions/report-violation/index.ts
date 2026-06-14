@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-device-id',
 }
 
 // Ban durations in days
@@ -19,7 +19,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { device_id } = await req.json()
+    // Only allow a device to report a violation for ITSELF. Derive the
+    // device id from the request header, never from the request body, so a
+    // caller cannot ban arbitrary users by passing their device_id.
+    const device_id = req.headers.get('x-device-id')
 
     if (!device_id) {
       return new Response(JSON.stringify({ error: 'device_id required' }), {

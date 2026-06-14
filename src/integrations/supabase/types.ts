@@ -299,6 +299,30 @@ export type Database = {
         }
         Relationships: []
       }
+      known_batches: {
+        Row: {
+          added_at: string
+          batch_id: string
+          batch_name: string | null
+          category: string | null
+          is_active: boolean | null
+        }
+        Insert: {
+          added_at?: string
+          batch_id: string
+          batch_name?: string | null
+          category?: string | null
+          is_active?: boolean | null
+        }
+        Update: {
+          added_at?: string
+          batch_id?: string
+          batch_name?: string | null
+          category?: string | null
+          is_active?: boolean | null
+        }
+        Relationships: []
+      }
       live_classes: {
         Row: {
           batch_id: string
@@ -579,7 +603,6 @@ export type Database = {
           ip_address: string | null
           longest_streak: number
           name: string
-          password_hash: string | null
           updated_at: string
           xp: number
         }
@@ -592,7 +615,6 @@ export type Database = {
           ip_address?: string | null
           longest_streak?: number
           name: string
-          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
@@ -605,7 +627,6 @@ export type Database = {
           ip_address?: string | null
           longest_streak?: number
           name?: string
-          password_hash?: string | null
           updated_at?: string
           xp?: number
         }
@@ -639,7 +660,17 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      get_leaderboard: {
+        Args: { _limit?: number }
+        Returns: {
+          avatar_url: string
+          current_streak: number
+          id: string
+          longest_streak: number
+          name: string
+          xp: number
+        }[]
+      }
     }
     Enums: {
       achievement_type:

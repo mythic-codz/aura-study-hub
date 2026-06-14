@@ -67,7 +67,7 @@ export function SecurityProvider({ children }: SecurityProviderProps) {
         const deviceId = getOrCreateDeviceId();
         const res = await fetch(`${SUPABASE_URL}/functions/v1/report-violation`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-device-id': deviceId },
           body: JSON.stringify({ device_id: deviceId }),
         });
 

@@ -22,6 +22,21 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Require a known device (enrolled user) to prevent anonymous AI-credit drain
+    const deviceId = req.headers.get("x-device-id");
+    if (!deviceId) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: knownUser } = await supabase
+      .from("users").select("id").eq("device_id", deviceId).maybeSingle();
+    if (!knownUser) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Check if quiz already exists
     const { data: existing } = await supabase
       .from("quizzes")
