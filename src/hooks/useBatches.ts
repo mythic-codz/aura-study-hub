@@ -114,23 +114,17 @@ function parseDataColumn(data: Json | null): { videos: VideoItem[]; pdfs: PdfIte
   const pdfs: PdfItem[] = [];
   
   data.forEach((item, index) => {
-    if (typeof item !== 'object' || item === null) return;
-    
-    const i = item as Record<string, Json>;
-    const title = String(i.title || '');
-    const url = String(i.url || '');
-    const type = String(i.type || '').toLowerCase();
+    const norm = normalizeContentItem(item);
+    if (!norm) return;
+    const i = norm;
     const thumbnail = typeof i.thumbnail === 'string' ? i.thumbnail : undefined;
     const subject = typeof i.subject === 'string' ? i.subject : undefined;
     const topic = typeof i.topic === 'string' ? i.topic : undefined;
-    
-    if (!title || !url) return;
-    
-    // Skip tests and other non-video/pdf types
-    if (type === 'video') {
-      videos.push({ id: String(index), title, url, thumbnail, subject, topic });
-    } else if (type === 'pdf') {
-      pdfs.push({ id: String(index), title, url, thumbnail, subject, topic });
+
+    if (norm.type === 'video') {
+      videos.push({ id: String(index), title: String(i.title), url: String(i.url), thumbnail, subject, topic });
+    } else {
+      pdfs.push({ id: String(index), title: String(i.title), url: String(i.url), thumbnail, subject, topic });
     }
   });
   
