@@ -454,16 +454,25 @@ function flattenStructured(sd: StructuredData | null): { videos: VideoItem[]; pd
   return { videos, pdfs };
 }
 
-/** Pull a thumbnail from the first item that has one. */
+/** Pull a thumbnail from the row's column or the first item that has one. */
 function findThumbnail(row: Record<string, Json>): string | null {
+  if (typeof row.thumbnail === 'string' && row.thumbnail.trim()) return row.thumbnail;
+  if (typeof row.banner === 'string' && row.banner.trim()) return row.banner;
   const sources: Json[] = [];
+  if (Array.isArray(row.lives)) sources.push(...(row.lives as Json[]));
   if (Array.isArray(row.all_items)) sources.push(...(row.all_items as Json[]));
   if (Array.isArray(row.videos)) sources.push(...(row.videos as Json[]));
   if (Array.isArray(row.pdfs)) sources.push(...(row.pdfs as Json[]));
   for (const item of sources) {
     if (item && typeof item === 'object' && !Array.isArray(item)) {
-      const thumb = (item as Record<string, Json>).thumbnail;
+      const it = item as Record<string, Json>;
+      const thumb = it.thumbnail;
       if (typeof thumb === 'string' && thumb.trim()) return thumb;
+      const extra = it.extra;
+      if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
+        const et = (extra as Record<string, Json>).thumbnail;
+        if (typeof et === 'string' && et.trim()) return et;
+      }
     }
   }
   return null;
