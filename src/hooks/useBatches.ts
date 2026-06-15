@@ -376,9 +376,41 @@ function extractedName(row: Record<string, Json>): string {
   return String(row.batch_name || row.batch_id || 'Untitled Course');
 }
 
+// Content types that should render as a playable video.
+const VIDEO_TYPES = new Set(['video', 'recording', 'live']);
+// Content types that should render as a document/PDF.
+const PDF_TYPES = new Set(['pdf', 'dpp', 'notes', 'ebook', 'study_material', 'assignment']);
+
+/**
+ * Normalize a raw bot ContentItem into a 'video' or 'pdf' item, or null if it
+ * is not directly playable/viewable (e.g. test:<id> or live:<id> placeholders).
+ */
+function normalizeContentItem(raw: Json): (Record<string, Json> & { type: 'video' | 'pdf' }) | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const it = raw as Record<string, Json>;
+  const title = String(it.title || '').trim();
+  const url = String(it.url || '').trim();
+  const rawType = String(it.type || '').toLowerCase();
+  if (!title || !url) return null;
+  // Skip non-playable placeholders like "test:1234" / "live:1234".
+  if (!/^https?:\/\//i.test(url)) return null;
+
+  let type: 'video' | 'pdf' | null = null;
+  if (VIDEO_TYPES.has(rawType)) type = 'video';
+  else if (PDF_TYPES.has(rawType)) type = 'pdf';
+  else if (/\.(m3u8|mp4|m4v|webm)(\?|$)/i.test(url)) type = 'video';
+  else if (/\.pdf(\?|$)/i.test(url)) type = 'pdf';
+  if (!type) return null;
+
+  return { ...it, type, title, url };
+}
+
 /**
  * Build a Source -> Subject -> Topic structured_data object from the
- * extracted_batches `structured` field: { Subject: { videos:[], pdfs:[] } }
+ * extracted_batches `structured` field, which groups items by subject:
+ *   { Subject: { videos:[], pdfs:[], dpps:[], notes:[], ... } }
+ * Every content array is scanned (not just videos/pdfs) so DPPs, notes and
+ * recordings that were previously dropped now show up.
  */
 function buildExtractedStructured(structured: Json | null, batchName: string): Json | null {
   if (!structured || typeof structured !== 'object' || Array.isArray(structured)) return null;
@@ -389,15 +421,26 @@ function buildExtractedStructured(structured: Json | null, batchName: string): J
     const group = subjects[subjectName];
     if (!group || typeof group !== 'object' || Array.isArray(group)) continue;
     const g = group as Record<string, Json>;
-    const vids = Array.isArray(g.videos) ? (g.videos as Json[]) : [];
-    const pds = Array.isArray(g.pdfs) ? (g.pdfs as Json[]) : [];
-    const items = [...vids, ...pds].filter((i) => {
-      if (!i || typeof i !== 'object' || Array.isArray(i)) return false;
-      const it = i as Record<string, Json>;
-      const type = String(it.type || '').toLowerCase();
-      return !!it.title && !!it.url && (type === 'video' || type === 'pdf');
-    });
-    if (items.length > 0) inner[subjectName] = { Recorded: items as Json };
+
+    // Flatten every content array under this subject.
+    const raw: Json[] = [];
+    for (const key of Object.keys(g)) {
+      if (Array.isArray(g[key])) raw.push(...(g[key] as Json[]));
+    }
+
+    const videos: Json[] = [];
+    const docs: Json[] = [];
+    for (const r of raw) {
+      const norm = normalizeContentItem(r);
+      if (!norm) continue;
+      if (norm.type === 'video') videos.push(norm as Json);
+      else docs.push(norm as Json);
+    }
+
+    const topics: Record<string, Json> = {};
+    if (videos.length > 0) topics['Videos'] = videos as Json;
+    if (docs.length > 0) topics['PDFs & Notes'] = docs as Json;
+    if (Object.keys(topics).length > 0) inner[subjectName] = topics as Json;
   }
 
   if (Object.keys(inner).length === 0) return null;
